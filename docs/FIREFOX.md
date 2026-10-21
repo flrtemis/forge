@@ -1,33 +1,22 @@
-# Read the web in your own voice — Firefox (Windows 10 Home)
+# Highlight text on any site → right-click → **Read Aloud**
 
-Your `model.pth` can't run *inside* Firefox: it's a 1.8 GB PyTorch checkpoint,
-and browsers don't run PyTorch on your GPU. What does work — and what this
-guide sets up — is the standard architecture:
+That is the whole feature: any page, select a paragraph, right-click,
+**Read Aloud**, and you hear it in the voice of your own `model.pth`.
 
 ```
-Firefox (page, extension)  ──HTTP──►  python -m forge.server  ──►  your model.pth (GPU)
-        text                                                            audio
+Firefox ──text──►  127.0.0.1:5004 (python -m forge.server)  ──►  your model.pth (GPU)
+        ◄─audio──
 ```
 
-The browser sends text to a small server on your own machine, gets back a WAV,
-and plays it. Nothing leaves the PC; the server only listens on `127.0.0.1`.
-
-Three ways to use it, easiest first:
-
-| | What | Setup |
-|---|---|---|
-| **1** | **Reader page** — paste text, click Read aloud | none, works in any Firefox |
-| **2** | **Extension** — right-click any page → "read in my voice" | load once via `about:debugging` |
-| **3** | **HTTP API** — `POST /speak` from your own scripts | none |
+A `.pth` is 1.8 GB of PyTorch and cannot run inside a browser, so the voice runs
+in a tiny server on your own PC and the page plays what it returns. Loopback
+only, nothing uploaded, works offline.
 
 ---
 
-## 1 · Start the server
+## Step 1 — start the voice server (once per session)
 
-Double-click **`serve-forge.bat`** in the FORGE folder. It activates `.venv`,
-starts the server, and opens `http://127.0.0.1:5004/reader` in Firefox.
-
-Or by hand:
+Double-click **`serve-forge.bat`** in `C:\Users\l3ung\forge`. Or:
 
 ```bat
 cd C:\Users\l3ung\forge
@@ -39,95 +28,92 @@ python -m forge.server --voice "%USERPROFILE%\forge\voices\my-voice"
 [forge] TTS server on http://127.0.0.1:5004/  (voice: C:\Users\l3ung\forge\voices\my-voice)
 ```
 
-Notes:
+Leave that window open while you read; it loads the model on the first sentence
+(10–20 s) and then answers in about a second. **No voice given?** It uses the
+newest folder in `%USERPROFILE%\forge\voices`. First stop is also this window's
+`Ctrl+C`.
 
-- The model **loads on the first sentence** (10–20 s) and then stays in VRAM.
-  After that a sentence is typically ~0.5–2 s.
-- **Leave that window open while you read.** Closing it turns the voice off.
-- No `--voice`? It picks the newest voice in `%USERPROFILE%\forge\voices`.
-- `--device cpu` if CUDA is misbehaving (works, ~10–30 s per sentence).
-- `--port 5005` if 5004 is taken. `--open` launches the browser for you.
+**Check it before going further:** open <http://127.0.0.1:5004/tools> and press
+**Speak a test sentence**. If you hear your voice, the hard part is done and any
+remaining problem is browser-side.
 
-Pin the console window to the taskbar, or make a shortcut in
-`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup` if you want the voice
-always available (it idles at ~2 GB VRAM, so only if you have room).
-
-## 2 · The reader page
-
-Open <http://127.0.0.1:5004/reader>.
-
-- Paste an article, a chapter, subtitles, an email → **Read aloud**
-  (<kbd>Ctrl</kbd>+<kbd>Enter</kbd>).
-- Each sentence appears as a line; it's highlighted as it's spoken, and you can
-  **click any line to restart from there**.
-- Sentences are synthesised *ahead* of playback, one request each, so a 20-page
-  article starts speaking almost immediately instead of after ten minutes.
-- **Speed** (0.6–1.6×) and **Expressiveness** (temperature: low = flat and
-  steady, high = more varied and lively — 0.6–0.8 is the sweet spot).
-- **Language** comes from the model's own language list (XTTS v2 ships with 17).
-
-Getting text *into* it:
-
-- **Long articles**: Firefox Reader View (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>R</kbd>),
-  then <kbd>Ctrl</kbd>+<kbd>A</kbd> → <kbd>Ctrl</kbd>+<kbd>C</kbd> → paste.
-  Reader View strips menus, ads and sidebars, which is exactly what you want —
-  a nav bar read aloud is unbearable.
-- **PDFs**: select in Firefox's PDF viewer, copy, paste.
-- **Epub/text files**: open the file directly in Firefox, copy all, paste.
-- Keep the reader tab **pinned** (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>)
-  so it stays out of the way but the page (and its audio) stays alive.
-
-## 3 · The extension — read *any* page in place
-
-`extension/` in this repo is a Manifest V2 Firefox add-on. It adds
-"FORGE: read this page / read the selection" to the right-click menu and to the
-toolbar button, and plays inside the page itself (so it survives closing the
-popup and keeps playing while you scroll).
-
-### Load it (2 minutes, temporary)
+## Step 2 — load the add-on (four clicks, once per Firefox session)
 
 1. Start the server (step 1).
-2. In Firefox, go to `about:debugging#/runtime/this-firefox`.
-3. **Load Temporary Add-on…** → pick `C:\Users\l3ung\forge\extension\manifest.json`.
-4. Open any article → right-click → **FORGE: read this page in my voice**.
+2. Address bar: `about:debugging#/runtime/this-firefox`
+3. **Load Temporary Add-on…**
+4. Pick `C:\Users\l3ung\forge\extension\manifest.json`
 
-A temporary add-on is removed when Firefox restarts — reload it the same way.
-(After installing, **reload pages that were already open** so the content
-script is injected.)
+A speech-bubble icon appears on the toolbar. **Reload pages that were already
+open** (the add-on only attaches to pages loaded after it).
 
-### Load it permanently (signed)
+## Step 3 — use it
 
-Firefox release refuses unsigned add-ons, so either:
+1. On **any** website, select the text you want to hear (a sentence, a paragraph,
+   half a page — anything).
+2. **Right-click → Read Aloud.**
+3. It speaks, in your voice. A small bar bottom-right shows `Reading… 3/12`
+   with pause `❚❚` and stop `■`.
 
-- **Sign it for yourself** (free, no review queue for unlisted add-ons):
-  zip the *contents* of `extension/`, upload at
-  <https://addons.mozilla.org/developers/addon/submit/> as **On your own site**
-  (unlisted), download the signed `.xpi`, and open it in Firefox
-  (`about:addons` → gear → *Install Add-on From File*). It then loads
-  automatically forever.
-- or use **Firefox Developer Edition / Nightly**, set
-  `xpinstall.signatures.required` to `false` in `about:config`, and install the
-  unsigned zip as an `.xpi`.
+Right-clicking without a selection gives **Read Aloud — whole page** (it picks
+the article body, skipping nav, menus and cookie banners).
 
-### Settings
+| Action | Menu | Shortcut |
+|---|---|---|
+| Read the selection | right-click → **Read Aloud** | `Alt`+`Shift`+`R` |
+| Read the whole page | right-click → **Read Aloud — whole page** | `Alt`+`Shift`+`A` |
+| Pause / resume | the player bar | `Alt`+`Shift`+`P` |
+| Stop | right-click → **Stop reading** | `Alt`+`Shift`+`S`, or `Esc` on the page |
 
-`about:addons` → FORGE → **Preferences** (or the popup's *Settings* link):
-server URL, optional token, language, speed, temperature, and whether to
-auto-scroll to the paragraph being read.
+If Firefox blocks the first playback (its autoplay policy doesn't always count a
+right-click as a page gesture), the bar says **“Autoplay blocked — click ▶ to
+start”**. One click and it reads normally from there.
 
-### How the page reading works
+## Permanent install (so it survives restarts)
 
-- It prefers `<article>`/`<main>`/the densest `<p>` container, and drops
-  invisible elements plus cookie-banner-looking one-liners.
-- It splits content into ≤900-character requests and prefetches nothing, so it
-  never blocks the page for long. Long pages simply queue up.
-- **Selection wins**: select a paragraph, right-click → *read the selection*.
-- Right-click → *FORGE: stop reading* (or the toolbar button) stops instantly.
+Temporary add-ons disappear when Firefox closes. Make it permanent by signing
+it once — free, no review queue for unlisted add-ons:
 
-## 4 · The HTTP API (for everything else)
+1. Zip the **contents** of `C:\Users\l3ung\forge\extension\` (so `manifest.json`
+   is at the top of the zip, not inside a folder). In Explorer: select all items
+   in `extension\` → right-click → *Send to → Compressed (zipped) folder*.
+2. Go to <https://addons.mozilla.org/developers/addon/submit/>, choose
+   **On your own site** (unlisted), upload the zip.
+3. Download the signed `.xpi` it gives you, then in Firefox:
+   `about:addons` → gear icon → **Install Add-on From File…**
+4. Done — the “Read Aloud” menu item is there after every restart.
+
+(Alternatively, with Firefox Developer Edition or Nightly, set
+`xpinstall.signatures.required` to `false` in `about:config` and install the
+unsigned zip renamed to `.xpi`.)
+
+## No add-on at all? Two fallbacks
+
+**The reader page** — <http://127.0.0.1:5004/reader>: paste text, **Read aloud**.
+Best source of clean text is Reader View (`Ctrl`+`Alt`+`R`, then select all,
+copy). Gives you a clickable sentence list, speed and expressiveness sliders.
+
+**A bookmarklet** — open <http://127.0.0.1:5004/tools>, drag the **Read Aloud**
+button to your bookmarks toolbar. Then: select text → click the bookmark. No
+install, survives restarts, but it's a toolbar click rather than a right-click,
+and some sites' CSP blocks `javascript:` links.
+
+## Where it can't work (Firefox restriction, not a bug)
+
+Extensions are not allowed to touch these, so “Read Aloud” is not offered or
+will report it can't inject:
+
+- `about:` pages (`about:config`, `about:newtab`, …)
+- `addons.mozilla.org` (Mozilla blocks add-ons there on purpose)
+- Firefox's **built-in PDF viewer** and `view-source:` pages
+- `file://` URLs unless you enable *“Allow this extension to access local files”*
+
+For those, copy the text and paste it into the reader page. (A PDF opened in
+Firefox: `Ctrl`+`A`, `Ctrl`+`C`, paste into the reader.)
+
+## The HTTP API (for scripts, other browsers, anything)
 
 ```bat
-:: one sentence to a file
 curl -X POST http://127.0.0.1:5004/speak ^
      -H "Content-Type: application/json" ^
      -d "{\"text\":\"Hello from my own voice\"}" -o out.wav
@@ -136,63 +122,59 @@ start "" out.wav
 
 | Method | Path | Body / query | Returns |
 |---|---|---|---|
-| GET | `/` or `/reader` | – | the reader page |
+| GET | `/tools` | – | setup + self-test page |
+| GET | `/reader`, `/` | – | the reader page |
 | GET | `/health`, `/voice` | – | active voice, languages, loaded?, device |
-| GET | `/api/voices` | – | voices found in `%USERPROFILE%\forge\voices` |
-| POST | `/speak` | `{"text","lang","speed","temperature"}` | `audio/wav`, 24 kHz mono 16-bit |
-| POST | `/voices` | `{"voice":"C:\\path\\to\\folder"}` | switches voice, 200 |
-| GET | `/style.css`, `/reader.js` | – | static assets |
+| GET | `/api/voices` | – | voices in `%USERPROFILE%\forge\voices` |
+| POST | `/speak` | `{"text","lang","speed","temperature"}` | `audio/wav` 24 kHz mono 16-bit |
+| POST | `/voices` | `{"voice":"C:\\path\\to\\folder"}` | switch voice (loads on next line) |
 
-Errors come back as `{"error": "..."}` with a real status code (400 bad input,
-401 bad token, 403 wrong Host header, 413 text too long, 500 synthesis failed).
+Errors are `{"error": "..."}` with real status codes: 400 bad input, 401 bad
+token, 403 wrong `Host` header, 413 text too long (> 5000 chars — the add-on
+chunks at ~900), 500 synthesis failed.
 
-From Python, without HTTP at all:
+No HTTP at all:
 
 ```python
 from forge.synth import TTSEngine
-engine = TTSEngine(r"C:\Users\l3ung\forge\voices\my-voice")   # loads once
-open("a.wav", "wb").write(engine.speak("Hello world"))
+engine = TTSEngine(r"C:\Users\l3ung\forge\voices\my-voice")   # long
+open("line.wav", "wb").write(engine.speak("Hello world"))      # ~1 s each after the first
 ```
 
-## 5 · Troubleshooting
+## Troubleshooting
 
 | Symptom | Cause / fix |
 |---|---|
-| Page says "server offline", retries forever | The console window was closed, or the server crashed. Restart `serve-forge.bat`; check its output. |
-| `OSError: [WinError 10048]` on start | Port 5004 already in use (another FORGE, or a leftover run). `--port 5005`. |
-| `No voice given and none found` | No exported voice in `%USERPROFILE%\forge\voices`. Pass `--voice` with the folder that has `model.pth`, `config.json`, `vocab.json`, `speaker_ref.wav`. |
-| `... is only 12 bytes — that is not trained weights` | You pointed at the Git placeholder, not your real checkpoint. |
-| First sentence takes ~20 s, then it's fast | Normal — that's the model loading into VRAM. |
-| `Firefox blocked autoplay` | Press **Play** once; Firefox only allows audio started by a click. (Once per page.) |
-| Extension does nothing on a page | Reload the tab after installing; `about:debugging` must still list the add-on (temporary ones vanish on restart). |
-| 401 | Server started with `--token` but the page/extension has no token: use `?token=…` or set it in the extension's settings. |
-| 403 "wrong Host header" | Something reached the server under a different hostname — that's the DNS-rebinding guard. Use `127.0.0.1` or `localhost`. |
-| Voice sounds flat / rushed / weird | Exaggerated input text is exaggerated back. Try temperature 0.6–0.8, speed 0.95–1.05, and keep `speaker_ref.wav` clean. |
-| CUDA out of memory | `--device cpu` (slow) or close the training app; training and inference both want the GPU. |
-| Antivirus/firewall popup on first run | It's binding to loopback only. Denying public/private network access is fine — nothing external is needed. |
+| No “Read Aloud” in the right-click menu | The add-on isn't loaded (`about:debugging` should list it) — temporary add-ons vanish on Firefox restart. Re-load step 2. |
+| Menu is there, nothing happens | Server not running or crashed. Check the console window; open <http://127.0.0.1:5004/tools>. Then reload the tab. |
+| “Autoplay blocked — click ▶ to start” | Firefox's autoplay policy. Click ▶ once; it then plays normally. |
+| Bar shows `FORGE error: Failed to fetch` | Server down, wrong port, or a `--token` mismatch. Start/restart the server; check the port in the add-on's settings. |
+| Silent first sentence for ~20 s | The model is loading into VRAM. Normal. |
+| `WinError 10048` on start | Port 5004 already in use → `--port 5005`, and set that URL in the add-on's settings. |
+| `No voice given and none found` | No export in `%USERPROFILE%\forge\voices`; pass `--voice <folder>`. |
+| `… is only 12 bytes — that is not trained weights` | You pointed at the Git placeholder, not your real checkpoint. |
+| 401 | Started with `--token`; put the same token in the add-on settings. |
+| 403 “wrong Host header” | Something reached the server under another hostname (DNS-rebinding guard). Use `127.0.0.1`/`localhost`. |
+| Works on some sites, not others | Restricted pages above (about:, AMO, PDF viewer, file://). Or the page blocks the content script and needs a reload. |
+| Choppy / gaps between sentences | The GPU is busy (e.g. training). Lower `--device cpu`? no — rather close the training app; or expect it. |
+| Voice sounds flat / strange | Temperature 0.6–0.8, speed 0.95–1.05 in the add-on settings; and a clean `speaker_ref.wav`. |
 
-## 6 · Security notes
+## Security
 
-- Default bind is `127.0.0.1`: only this PC can reach it. Nothing is uploaded.
-- **CORS is open** — `Access-Control-Allow-Origin: *`. That's deliberate: the
-  extension's page-side player calls the server from whatever site you're on.
-  The consequence is that *any website you visit* can ask your local server to
-  synthesise text. It can't read your files or your voice package (the API has
-  no file access), but it can make your GPU work. If that bothers you:
-  start with `--token <random-string>` and put the same string in the extension
-  settings. Requests without it get 401.
-- **Host header pinning** blocks DNS-rebinding attacks (a page whose hostname
-  resolves to 127.0.0.1 is refused).
-- `--host 0.0.0.0` exposes the server to your LAN. Don't, unless you also pass
-  `--token`.
+- Binds to `127.0.0.1`: only this PC can reach it. No uploads, no telemetry.
+- **CORS is open**, which is what lets the page-side player talk to the server
+  from any site you visit. Consequence: any site you visit can ask your GPU to
+  synthesise text. If that bothers you, start with `--token <random-string>` and
+  put the same string in the add-on's settings (requests without it get 401).
+- **Host header pinning** refuses requests addressed to another hostname, which
+  blocks DNS-rebinding attacks.
+- `--host 0.0.0.0` exposes your voice to the whole LAN — only with `--token`.
 
-## 7 · Why not…?
+## Why not…?
 
-- **`speechSynthesis` / OS voices** — that's Microsoft's voices, not yours.
-- **Running the model in the browser** (ONNX/WebGPU) — XTTS v2 is ~1.8 GB of
-  weights and a GPT-style autoregressive decoder; browser ports exist for tiny
-  models, not this. The local-server design above gives you the same UX.
-- **A `file://` page** — Firefox blocks fetch from file pages; use the served
-  `http://127.0.0.1:5004/reader` page instead. (`127.0.0.1` counts as a secure
-  context, so no mixed-content issues even if you later serve other pages over
-  https.)
+- **`speechSynthesis`** — that's Microsoft's system voices, not yours.
+- **Running the model in the browser** — XTTS v2 is a 1.8 GB autoregressive
+  transformer; browser ports exist for tiny models, not this one.
+- **A `file://` page instead of the server** — Firefox blocks `fetch` from file
+  pages. `127.0.0.1` is a secure context, so the served pages behave like https
+  pages without needing a certificate.

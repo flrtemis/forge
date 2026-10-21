@@ -79,28 +79,32 @@ say.bat "Hello world"
 Point anything at that command — scripts, the auto-TTS userscript's future
 local-server mode, your phone stack — and it's your voice speaking.
 
-## Read the web in your own voice (Firefox)
+## Read Aloud on any site (Firefox)
 
-`model.pth` is a PyTorch checkpoint, so it runs next to the browser, not inside
-it: a tiny local server turns text into WAVs and Firefox plays them.
+Select text on any web page → right-click → **Read Aloud** → hear it in your
+own voice. The voice lives in a small local server (a `.pth` can't run inside a
+browser); the add-on sends the text there and plays what comes back.
 
 ```bat
 serve-forge.bat
 :: or: python -m forge.server --voice "%USERPROFILE%\forge\voices\my-voice"
 ```
 
-Then open <http://127.0.0.1:5004/reader> — paste an article, press **Read
-aloud**. It speaks in your voice, sentence by sentence, with speed /
-expressiveness controls and click-to-jump. Paste from Firefox Reader View for
-clean text.
+Then load the add-on once per Firefox session:
+`about:debugging#/runtime/this-firefox` → **Load Temporary Add-on…** →
+`C:\Users\l3ung\forge\extension\manifest.json`. Sign it once via
+addons.mozilla.org to make it permanent.
 
-Want it **in place, on any page**? `extension/` is a Firefox add-on: right-click
-→ *FORGE: read this page / read the selection*. Load it via
-`about:debugging#/runtime/this-firefox` → *Load Temporary Add-on* →
-`extension/manifest.json`.
+- **right-click → Read Aloud** — speaks the selection (`Alt`+`Shift`+`R`)
+- **right-click → Read Aloud — whole page** — article body only, nav/banners skipped
+- a small bar shows `Reading… 3/12` with pause and stop
+- if Firefox blocks autoplay, the bar offers one **▶ Start** click
 
-Full walkthrough, signing the add-on for permanent install, the HTTP API
-(`POST /speak`), and the troubleshooting table: **[docs/FIREFOX.md](docs/FIREFOX.md)**.
+No add-on? <http://127.0.0.1:5004/reader> reads pasted text, and
+<http://127.0.0.1:5004/tools> has a self-test plus a draggable bookmarklet.
+
+Setup, signing, the HTTP API (`POST /speak`) and the troubleshooting table:
+**[docs/FIREFOX.md](docs/FIREFOX.md)**.
 
 ## "I already have a model.pth — how do I run it?"
 

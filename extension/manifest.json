@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
   "name": "FORGE — read the page in my voice",
-  "version": "1.0.0",
-  "description": "Speak the selected text (or the whole page) with your own FORGE XTTS voice, served from 127.0.0.1.",
+  "version": "1.1.0",
+  "description": "Right-click any page → Read Aloud. Speaks the text you selected with your own FORGE voice, from a server on your PC.",
   "browser_specific_settings": {
     "gecko": {
       "id": "forge-reader@localhost",
@@ -18,7 +18,7 @@
   ],
   "background": {
     "scripts": ["background.js"],
-    "persistent": false
+    "persistent": true
   },
   "content_scripts": [
     {
@@ -28,8 +28,26 @@
     }
   ],
   "browser_action": {
-    "default_title": "FORGE: read this page in my voice",
+    "default_title": "Read Aloud (FORGE)",
     "default_popup": "popup.html"
+  },
+  "commands": {
+    "read-selection": {
+      "suggested_key": { "default": "Alt+Shift+R" },
+      "description": "Read Aloud — speak the selected text"
+    },
+    "read-page": {
+      "suggested_key": { "default": "Alt+Shift+A" },
+      "description": "Read Aloud — speak the whole page"
+    },
+    "toggle": {
+      "suggested_key": { "default": "Alt+Shift+P" },
+      "description": "Pause / resume reading"
+    },
+    "stop": {
+      "suggested_key": { "default": "Alt+Shift+S" },
+      "description": "Stop reading"
+    }
   },
   "options_ui": {
     "page": "options.html",

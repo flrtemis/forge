@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>FORGE — setup &amp; self-test</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>FORGE <span>setup</span></h1>
+    <div class="bar">
+      <span id="voice-name" class="pill">checking…</span>
+      <a href="/reader">→ reader page</a>
+    </div>
+  </header>
+
+  <main>
+    <h2>1 · Does the voice work?</h2>
+    <p class="hint">This is the whole chain: browser → local server → your <code>model.pth</code> → speaker.</p>
+    <div class="row">
+      <button id="test" class="primary">Speak a test sentence</button>
+      <span id="test-status" class="status"></span>
+    </div>
+    <pre id="detail" class="small"></pre>
+
+    <h2>2 · Right-click “Read Aloud” on any site</h2>
+    <p class="hint">
+      That needs the Firefox add-on in <code>extension/</code>. It cannot be installed
+      from this page (Firefox only installs signed add-ons from files), but it is four clicks:
+    </p>
+    <ol class="hint">
+      <li>Type <code>about:debugging#/runtime/this-firefox</code> in the address bar.</li>
+      <li>Click <strong>Load Temporary Add-on…</strong>.</li>
+      <li>Open <code>C:\Users\l3ung\forge\extension\</code> and pick <code>manifest.json</code>.</li>
+      <li>Now select text on any page → right-click → <strong>Read Aloud</strong>.</li>
+    </ol>
+    <p class="hint small">
+      Temporary means it disappears when Firefox restarts — the add-on is also on your
+      toolbar (speech-bubble icon) and supports
+      <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd> on the selection,
+      <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> pause, <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> stop.
+      To make it permanent, sign it once at addons.mozilla.org — see <code>docs/FIREFOX.md</code>.
+    </p>
+
+    <h2>3 · No add-on at all? Drag this to your bookmarks bar</h2>
+    <p class="hint">
+      Select text, click the bookmark, and it reads the selection with your voice.
+      Works after restarts, needs no install.
+    </p>
+    <div class="row">
+      <a id="bookmarklet" class="button-like" href="#" draggable="true">Read Aloud</a>
+      <label>Server <input id="server" type="text" value=""></label>
+      <label>Token <input id="token" type="text" placeholder="only if started with --token"></label>
+      <button id="rebuild">Rebuild link</button>
+    </div>
+    <p class="hint small" id="bm-note"></p>
+
+    <h2>4 · API</h2>
+    <p class="hint small">
+      <code>POST /speak</code> with <code>{"text": "..."}</code> → <code>audio/wav</code>.
+      See <code>docs/FIREFOX.md</code> for the full table.
+    </p>
+  </main>
+
+  <footer><span>FORGE · your voice, your machine.</span></footer>
+  <script src="/tools.js"></script>
+</body>
+</html>

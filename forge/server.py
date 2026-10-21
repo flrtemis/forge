@@ -47,6 +47,9 @@ STATIC = {
     "/reader.html": ("reader.html", "text/html; charset=utf-8"),
     "/style.css": ("style.css", "text/css; charset=utf-8"),
     "/reader.js": ("reader.js", "text/javascript; charset=utf-8"),
+    "/tools": ("tools.html", "text/html; charset=utf-8"),
+    "/tools.html": ("tools.html", "text/html; charset=utf-8"),
+    "/tools.js": ("tools.js", "text/javascript; charset=utf-8"),
 }
 
 
