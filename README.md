@@ -66,11 +66,87 @@ on the next provider. The UI never changes; the backend roams.
 ## Use your voice anywhere
 
 ```bat
-python -m forge.synth --voice %USERPROFILE%\forge\voices\my-voice --text "Hello world" --out out.wav
+.venv\Scripts\activate
+python -m forge.synth --voice "%USERPROFILE%\forge\voices\my-voice" --text "Hello world" --out out.wav
+```
+
+Or double-click-free and one line shorter:
+
+```bat
+say.bat "Hello world"
 ```
 
 Point anything at that command — scripts, the auto-TTS userscript's future
 local-server mode, your phone stack — and it's your voice speaking.
+
+## "I already have a model.pth — how do I run it?"
+
+A `.pth` is the *weights*. It is not yet a voice. XTTS also needs the config it
+was trained with, the tokenizer vocab, and a short reference clip of the
+speaker. A complete FORGE voice is these four files in one folder:
+
+```
+my-voice\
+  model.pth        ~1.8 GB  your fine-tuned weights
+  config.json       the XTTS v2 config those weights were trained with
+  vocab.json        tokenizer vocabulary
+  speaker_ref.wav   6–15 s clean clip of the voice (speaker conditioning)
+  voice.json        optional manifest FORGE writes
+```
+
+Pick the case that matches you:
+
+**1. FORGE already exported it** (`%USERPROFILE%\forge\voices\my-voice`, and a
+`.zip` next to it). Point the app or the CLI at that folder — nothing else to do:
+
+```bat
+python -m forge.synth --voice "%USERPROFILE%\forge\voices\my-voice" --text "Hello world" --out out.wav
+```
+
+In the app, tab **3 · Voice** fills that path in automatically; you can also
+paste the folder *or* `model.pth` itself into the field and press **Speak**.
+
+**2. You only have the raw checkpoint** from `forge\run\training\<run-name>\`
+(`model.pth` or `best_model.pth`). `config.json` and `vocab.json` were copied
+next to it by training, so give the CLI the `.pth` and a reference wav — any
+clean clip of the voice works, 6–15 s:
+
+```bat
+python -m forge.synth --checkpoint "%USERPROFILE%\forge\run\training\FORGE_XTTS-...\model.pth" ^
+    --speaker-ref "%USERPROFILE%\forge\run\training\FORGE_XTTS-...\wavs\clip_00000001.wav" ^
+    --text "Hello world" --out out.wav
+```
+
+Add `--config` / `--vocab` only if those two files live somewhere else.
+
+**3. The `.pth` came from somewhere else** (another repo, a download, a
+friend). It will only load if it is an **XTTS v2 GPT checkpoint** *and* you also
+have its `config.json` and `vocab.json` — the base XTTS v2 ones are fine only if
+it was fine-tuned from XTTS v2 with the standard recipe. A `.pth` from Bark,
+Piper, VITS, So-VITS-SVC, RVC or Tortoise is a different architecture and will
+never load here. Copy the three files plus your reference wav into one folder,
+then use case 1 or 2. Note the licence: Coqui's XTTS v2 weights are **CPML —
+non-commercial**; your own fine-tune inherits that.
+
+### Windows 10 Home specifics
+
+- **Home is fine.** Nothing here needs Hyper-V, WSL2, Docker, Pro/Enterprise
+  features, or admin rights after Python and the GPU driver are installed.
+  Training and inference are plain Python + CUDA.
+- **GPU**: install the NVIDIA driver, then a CUDA build of torch (see *Install*).
+  On a card without enough VRAM the `.pth` still *runs* — inference needs far
+  less than training. Force CPU with `--device cpu` if CUDA acts up; it's slow
+  (a sentence takes tens of seconds), but it works on integrated graphics.
+- **Quote every path.** `C:\Users\<you>\...` contains no spaces usually, but
+  `%USERPROFILE%` expands with backslashes — always wrap it in `"` so cmd.exe
+  doesn't eat it, and use `^` to continue a long command on the next line.
+- **If the Windows Store's Python stub opens instead of Python**, install from
+  python.org (3.10/3.11) and tick *Add python.exe to PATH*.
+- **A Git checkout's `model.pth` may be a 12-byte placeholder** (real weights
+  are ~1.8 GB and are usually not committed). If you see "is only N bytes —
+  that is not trained weights", you're holding the placeholder, not your model.
+- SmartScreen may warn the first time `say.bat` runs (*More info → Run anyway*);
+  it's a plain batch file that activates `.venv` and calls `forge.synth`.
 
 ## Honest expectations
 
@@ -100,6 +176,8 @@ Every exported package is your responsibility once it leaves your machine.
 ```
 forge/
   run.py               # launcher
+  run-forge.bat        # double-click launcher (activates .venv)
+  say.bat              # say.bat "hello" -> said.wav, played
   requirements.txt
   README.md
   recording-script.txt # ~10 minutes of varied reading material
@@ -108,4 +186,14 @@ forge/
     dataset.py         # whisper transcription + segmentation -> CSVs
     train.py           # XTTS v2 GPT fine-tuning (Windows-safe)
     synth.py           # inference + voice packaging + CLI
+    files.py           # workdir tree browser
+    roam/              # failover orchestrator (local -> Kaggle)
+```
+
+`forge.synth` is the importable API too, if you'd rather drive it from your own
+script:
+
+```python
+from forge.synth import synthesize
+synthesize("Hello world", r"C:\Users\me\forge\voices\my-voice", "out.wav", "en")
 ```

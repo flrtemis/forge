@@ -183,6 +183,39 @@ def build_app(workdir):
                                           speaker_ref, voices_root)
         return voice_dir
 
+    def latest_voice():
+        """Newest exported voice folder that actually contains a checkpoint."""
+        try:
+            cands = [os.path.join(voices_root, d) for d in os.listdir(voices_root)]
+        except OSError:
+            return ""
+
+        def _newest(d):
+            try:
+                names = [f for f in os.listdir(d) if f.lower().endswith(".pth")]
+                return max((os.path.getmtime(os.path.join(d, f)) for f in names),
+                           default=0)
+            except OSError:
+                return 0
+
+        cands = [(d, _newest(d)) for d in cands if os.path.isdir(d)]
+        cands = [(d, t) for d, t in cands if t]      # dirs with a real .pth in them
+        return max(cands, key=lambda dt: dt[1])[0] if cands else ""
+
+    def resolve_voice(vdir):
+        """Accept a folder, a .pth, or nothing (fall back to what we have)."""
+        vdir = (vdir or "").strip().strip('"')
+        return vdir or state["voice_dir"] or latest_voice()
+
+    def pull_new_voice():
+        """Push a freshly trained voice into the field, once — never fight a
+        path the user typed in by hand."""
+        fresh = state["voice_dir"]
+        if fresh and fresh != state.get("voice_pushed"):
+            state["voice_pushed"] = fresh
+            return gr.update(value=fresh)
+        return gr.update()
+
     def tail_log():
         # roam backend has its own log; local backend uses train.log
         if state.get("backend", "").startswith("Roam"):
@@ -201,9 +234,10 @@ def build_app(workdir):
 
     # ---------------- voice test / export ----------------
     def speak(text, lang, vdir):
-        vdir = vdir or state["voice_dir"]
-        if not vdir or not os.path.isdir(vdir):
-            return None, "No trained voice yet — finish tab 2 first."
+        vdir = resolve_voice(vdir)
+        if not vdir or not os.path.exists(vdir):
+            return None, ("No trained voice yet. Finish tab 2, or paste the path to a "
+                          "voice folder (or its model.pth) into the field above.")
         out = os.path.join(workdir, "preview.wav")
         try:
             sy.synthesize(text, vdir, out, lang)
@@ -212,14 +246,17 @@ def build_app(workdir):
         return out, "Done — press play."
 
     def export_now(vdir, name):
-        vdir = vdir or state["voice_dir"]
+        vdir = resolve_voice(vdir)
         name = (name or "my-voice").strip().replace(" ", "-")
-        if not vdir or not os.path.isdir(vdir):
+        if not vdir or not os.path.exists(vdir):
             return None, "No trained voice yet."
-        _, zip_path = sy.export_voice(name,
-            os.path.join(vdir, "model.pth"), os.path.join(vdir, "config.json"),
-            os.path.join(vdir, "vocab.json"), os.path.join(vdir, "speaker_ref.wav"),
-            voices_root)
+        try:
+            spec = sy.describe(vdir)
+            _, zip_path = sy.export_voice(name, spec["checkpoint"], spec["config"],
+                                          spec["vocab"], spec["speaker_ref"],
+                                          voices_root)
+        except Exception:
+            return None, f"Export failed:\n{traceback.format_exc()}"
         return zip_path, f"Exported {zip_path}"
 
     # ---------------- UI ----------------
@@ -267,8 +304,15 @@ def build_app(workdir):
             gr.Timer(5).tick(tail_log, None, tr_log)
 
         with gr.Tab("3 · Voice"):
-            gr.Markdown("Test your trained voice, then export it as a portable package.")
-            vdir = gr.Textbox(label="Voice folder (auto-filled after training)")
+            gr.Markdown("Test your trained voice, then export it as a portable package. "
+                        "Already trained? Point the field below at your voice folder — or "
+                        "straight at a `model.pth` — and press Speak. A voice needs "
+                        "`model.pth` + `config.json` + `vocab.json` + a reference `.wav`; "
+                        "files sitting next to the `.pth` are found automatically.")
+            vdir = gr.Textbox(label="Voice folder or model.pth (auto-filled)",
+                              value=state["voice_dir"] or latest_voice())
+            # after a training run finishes, point the field at the fresh export
+            gr.Timer(5).tick(pull_new_voice, None, vdir)
             lang3 = gr.Dropdown(LANGS, value="en", label="Language")
             txt = gr.Textbox(label="Text to speak",
                              value="This is my voice now. It was trained on my own recordings, on my own machine.")
@@ -282,8 +326,15 @@ def build_app(workdir):
             zip_out = gr.File(label="Download")
             exp_msg = gr.Markdown()
             b4.click(export_now, [vdir, vname], [zip_out, exp_msg])
-            gr.Markdown("Use the exported voice anywhere:\n"
-                        "`python -m forge.synth --voice <folder> --text \"hello\" --out out.wav`")
+            gr.Markdown("Use the voice anywhere — from a terminal in this folder:\n"
+                        "```bat\n"
+                        ".venv\\Scripts\\activate\n"
+                        "python -m forge.synth --voice \"%USERPROFILE%\\forge\\voices\\my-voice\" "
+                        "--text \"hello\" --out out.wav\n"
+                        "```\n"
+                        "Or the same file via `--checkpoint path\\to\\model.pth` when it "
+                        "sits next to `config.json`, `vocab.json` and a reference `.wav`. "
+                        "`say.bat \"some text\"` does the same thing in one click.")
 
         with gr.Tab("4 · Files"):
             gr.Markdown("Browse everything FORGE has created — datasets, checkpoints, exported voices — with sizes.")

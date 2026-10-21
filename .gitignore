@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+said.wav
+forge_out.wav
+*.tmp

@@ -167,6 +167,26 @@ class _ResourceGuard(threading.Thread):
         self._stop_event.set()
 
 
+def trained_checkpoint(exp_path):
+    """The .pth the Trainer actually wrote in `exp_path`.
+
+    Never returns the directory itself: handing a bare folder to
+    Xtts.load_checkpoint fails. That bug is why an exported voice used to
+    come out with checkpoint == <run folder> and no weights.
+    """
+    for name in ("best_model.pth", "model.pth"):
+        p = os.path.join(exp_path, name)
+        if os.path.isfile(p):
+            return p
+    pths = [os.path.join(exp_path, f) for f in os.listdir(exp_path)
+            if f.lower().endswith(".pth") and os.path.isfile(os.path.join(exp_path, f))]
+    if not pths:
+        raise RuntimeError(
+            f"training finished but no .pth checkpoint is in {exp_path}. "
+            "Check train.log for an interrupted run, then resume training.")
+    return max(pths, key=os.path.getmtime)
+
+
 def train_voice(language, num_epochs, batch_size, grad_accum, train_csv, eval_csv,
                 output_path, max_audio_length=255995, log_fn=print, resume_from=None):
     """resume_from: trainer checkpoint dir to continue from (roam failover)."""
@@ -301,11 +321,11 @@ def train_voice(language, num_epochs, batch_size, grad_accum, train_csv, eval_cs
     del model, trainer, train_samples, eval_samples
     gc.collect()
 
-    best = os.path.join(exp_path, "best_model.pth")
+    checkpoint = trained_checkpoint(exp_path)
     return {
         "config": os.path.join(exp_path, "config.json"),
         "vocab": os.path.join(exp_path, "vocab.json"),
-        "checkpoint": best if os.path.isfile(best) else exp_path,
+        "checkpoint": checkpoint,
         "exp_path": exp_path,
         "speaker_ref": speaker_ref,
     }
