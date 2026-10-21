@@ -55,15 +55,49 @@ open** (the add-on only attaches to pages loaded after it).
 3. It speaks, in your voice. A small bar bottom-right shows `Reading… 3/12`
    with pause `❚❚` and stop `■`.
 
-Right-clicking without a selection gives **Read Aloud — whole page** (it picks
-the article body, skipping nav, menus and cookie banners).
+Without a selection you get two more items:
+
+- **Read Aloud — from here** — starts at the paragraph you right-clicked and
+  carries on to the end of the article. Works inside links, images, list items
+  and code blocks too (it climbs to the enclosing block).
+- **Read Aloud — whole page** — the whole article body.
 
 | Action | Menu | Shortcut |
 |---|---|---|
 | Read the selection | right-click → **Read Aloud** | `Alt`+`Shift`+`R` |
-| Read the whole page | right-click → **Read Aloud — whole page** | `Alt`+`Shift`+`A` |
+| Read from the paragraph you clicked | right-click → **Read Aloud — from here** | – |
+| Read the whole article | right-click → **Read Aloud — whole page** | `Alt`+`Shift`+`A` |
 | Pause / resume | the player bar | `Alt`+`Shift`+`P` |
 | Stop | right-click → **Stop reading** | `Alt`+`Shift`+`S`, or `Esc` on the page |
+
+## What "the page" means
+
+`document.body` is the wrong thing to read — it's mostly navigation. The player
+picks the most specific *prose container* first:
+
+| Page | What gets read |
+|---|---|
+| **GitHub repo** | the **README** (`.markdown-body`) — not the file list, sidebar, branch bar or footer |
+| **GitHub issue / PR** | the description **and every comment**, in order |
+| **GitHub code view** | the code lines; toolbar ("Go to file", "Code") skipped |
+| **GitHub wiki / gist** | the rendered markdown |
+| **Blog post** | `.entry-content` / `.post-content` / `article` / `.post` — comments and newsletter boxes excluded |
+| **Docs site** (mkdocs, sphinx, docusaurus) | `.md-content` / `.rst-content` / `.prose` — the table-of-contents sidebar is excluded |
+| **Plain article-shaped page** | whatever prose exists; anything inside `header`, `nav`, `footer`, `aside`, or with a class/id like `sidebar`, `cookie`, `breadcrumb`, `promo`, `newsletter` is dropped |
+| **Everything else** | the best available `<main>`/`<article>` |
+
+Code fences inside prose (`<pre>`) are skipped unless you tick *Read code
+blocks too* — "pip install torch torchaudio --index-url https://…" does not
+become a pleasant sentence. Selecting the code and using **Read Aloud** always
+works, since the selection path never filters.
+
+Detection is deliberately conservative: if it can't find a prose container it
+reads the body and filters chrome, and if the right-click landed outside the
+article, "from here" falls back to the whole page instead of reading the menu.
+
+**GitHub specifics:** repo pages are single-page apps, so the add-on stays
+loaded as you browse — but if the URL changes mid-sentence, reading **stops**
+rather than narrating the page you just left. Re-open the menu on the new page.
 
 If Firefox blocks the first playback (its autoplay policy doesn't always count a
 right-click as a page gesture), the bar says **“Autoplay blocked — click ▶ to
@@ -107,6 +141,9 @@ will report it can't inject:
 - `addons.mozilla.org` (Mozilla blocks add-ons there on purpose)
 - Firefox's **built-in PDF viewer** and `view-source:` pages
 - `file://` URLs unless you enable *“Allow this extension to access local files”*
+- **inside an iframe** the click is visible but the frame's content usually isn't
+  (cross-origin), so "from here" reads the top page instead; the built-in PDF
+  viewer is the common case of this
 
 For those, copy the text and paste it into the reader page. (A PDF opened in
 Firefox: `Ctrl`+`A`, `Ctrl`+`C`, paste into the reader.)

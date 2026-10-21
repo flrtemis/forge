@@ -96,12 +96,19 @@ Then load the add-on once per Firefox session:
 addons.mozilla.org to make it permanent.
 
 - **right-click → Read Aloud** — speaks the selection (`Alt`+`Shift`+`R`)
-- **right-click → Read Aloud — whole page** — article body only, nav/banners skipped
+- **right-click → Read Aloud — from here** — from the paragraph you clicked to the
+  end of the article
+- **right-click → Read Aloud — whole page** — the article body: on a GitHub repo
+  page that's the **README**, not the file list, sidebar or footer
 - a small bar shows `Reading… 3/12` with pause and stop
 - if Firefox blocks autoplay, the bar offers one **▶ Start** click
 
 No add-on? <http://127.0.0.1:5004/reader> reads pasted text, and
 <http://127.0.0.1:5004/tools> has a self-test plus a draggable bookmarklet.
+
+It knows what "the page" is: rendered markdown on GitHub (README, issue + all
+comments, code views), post containers on blogs, doc bodies on mkdocs/sphinx
+sites — with nav, sidebars, cookie banners and footers filtered out.
 
 Setup, signing, the HTTP API (`POST /speak`) and the troubleshooting table:
 **[docs/FIREFOX.md](docs/FIREFOX.md)**.

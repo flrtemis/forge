@@ -25,6 +25,11 @@
 
     <h2>2 · Right-click “Read Aloud” on any site</h2>
     <p class="hint">
+      On a GitHub repo page, “whole page” reads the <strong>README</strong> — not the
+      file list, the sidebar or the footer. “From here” starts at the paragraph you
+      clicked and runs to the end.
+    </p>
+    <p class="hint">
       That needs the Firefox add-on in <code>extension/</code>. It cannot be installed
       from this page (Firefox only installs signed add-ons from files), but it is four clicks:
     </p>
@@ -32,7 +37,9 @@
       <li>Type <code>about:debugging#/runtime/this-firefox</code> in the address bar.</li>
       <li>Click <strong>Load Temporary Add-on…</strong>.</li>
       <li>Open <code>C:\Users\l3ung\forge\extension\</code> and pick <code>manifest.json</code>.</li>
-      <li>Now select text on any page → right-click → <strong>Read Aloud</strong>.</li>
+      <li>Now select text on any page → right-click → <strong>Read Aloud</strong>,
+          or right-click a paragraph → <strong>Read Aloud — from here</strong>,
+          or <strong>Read Aloud — whole page</strong>.</li>
     </ol>
     <p class="hint small">
       Temporary means it disappears when Firefox restarts — the add-on is also on your

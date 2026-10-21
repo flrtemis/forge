@@ -4,7 +4,7 @@ const api = typeof browser !== "undefined" ? browser : chrome;
 
 const DEFAULTS = {
   server: "http://127.0.0.1:5004", token: "", lang: "en",
-  speed: 1.0, temperature: 0.7, autoScroll: true
+  speed: 1.0, temperature: 0.7, autoScroll: true, readCode: false
 };
 
 function $(id) { return document.getElementById(id); }
@@ -22,6 +22,7 @@ function load() {
     $("speed").value = s.speed;
     $("temperature").value = s.temperature;
     $("autoScroll").checked = !!s.autoScroll;
+    $("readCode").checked = !!s.readCode;
   });
 }
 
@@ -32,7 +33,8 @@ function current() {
     lang: ($("lang").value || "en").trim(),
     speed: Number($("speed").value) || 1.0,
     temperature: Number($("temperature").value) || 0.7,
-    autoScroll: $("autoScroll").checked
+    autoScroll: $("autoScroll").checked,
+    readCode: $("readCode").checked
   };
 }
 

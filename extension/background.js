@@ -40,22 +40,30 @@ function buildMenus() {
   // The background page is persistent, so this runs once per browser session;
   // onInstalled re-runs it after an update (removeAll avoids duplicate ids).
   api.menus.removeAll().then(() => {
+    // With a selection, this is the only item you need.
     api.menus.create({
       id: "forge-read-selection",
       title: "Read Aloud",
       contexts: ["selection"],
       documentUrlPatterns: ["<all_urls>"]
     });
+    // No selection: start at the paragraph you clicked and keep going.
+    api.menus.create({
+      id: "forge-read-here",
+      title: "Read Aloud — from here",
+      contexts: ["page", "link", "image", "frame", "editable", "audio", "video"],
+      documentUrlPatterns: ["<all_urls>"]
+    });
     api.menus.create({
       id: "forge-read-page",
-      title: "Read Aloud \u2014 whole page",
-      contexts: ["page", "selection"],
+      title: "Read Aloud — whole page",
+      contexts: ["page", "link", "image", "frame", "selection", "editable", "audio", "video"],
       documentUrlPatterns: ["<all_urls>"]
     });
     api.menus.create({
       id: "forge-stop",
       title: "Stop reading (FORGE)",
-      contexts: ["page", "selection"],
+      contexts: ["page", "link", "image", "frame", "selection", "editable"],
       documentUrlPatterns: ["<all_urls>"]
     });
   });
@@ -68,6 +76,8 @@ api.menus.onClicked.addListener(async (info, tab) => {
   if (!tab || !tab.id) return;
   if (info.menuItemId === "forge-read-selection") {
     tell(tab.id, { forge: "speak", text: info.selectionText || "", from: "selection", maxChars: PARAGRAPH });
+  } else if (info.menuItemId === "forge-read-here") {
+    tell(tab.id, { forge: "speak", from: "here", maxChars: PARAGRAPH });
   } else if (info.menuItemId === "forge-read-page") {
     tell(tab.id, { forge: "speak", from: info.selectionText ? "selection" : "page", maxChars: PARAGRAPH });
   } else if (info.menuItemId === "forge-stop") {

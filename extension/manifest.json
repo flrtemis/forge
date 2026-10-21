@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "FORGE — read the page in my voice",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Right-click any page → Read Aloud. Speaks the text you selected with your own FORGE voice, from a server on your PC.",
   "browser_specific_settings": {
     "gecko": {
