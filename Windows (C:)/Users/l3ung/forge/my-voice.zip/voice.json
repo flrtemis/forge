@@ -1,8 +1,0 @@
-{
-  "name": "my-voice",
-  "checkpoint": "C:\\Users\\l3ung\\forge\\voices\\my-voice\\model.pth",
-  "config": "C:\\Users\\l3ung\\forge\\voices\\my-voice\\config.json",
-  "vocab": "C:\\Users\\l3ung\\forge\\voices\\my-voice\\vocab.json",
-  "speaker_ref": "C:\\Users\\l3ung\\forge\\voices\\my-voice\\speaker_ref.wav",
-  "sample_rate": 24000
-}
