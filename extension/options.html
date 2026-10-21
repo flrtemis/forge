@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>FORGE — settings</title>
+  <link rel="stylesheet" href="ui.css">
+</head>
+<body class="options">
+  <h1>FORGE <span>settings</span></h1>
+
+  <label>Server URL
+    <input id="server" type="text" placeholder="http://127.0.0.1:5004">
+  </label>
+
+  <label>Token <span class="small">(only if you started the server with --token)</span>
+    <input id="token" type="text" placeholder="leave empty">
+  </label>
+
+  <label>Language
+    <input id="lang" type="text" placeholder="en">
+  </label>
+
+  <label>Speed
+    <input id="speed" type="number" min="0.5" max="2" step="0.05">
+  </label>
+
+  <label>Expressiveness (temperature)
+    <input id="temperature" type="number" min="0.3" max="1.2" step="0.05">
+  </label>
+
+  <label class="check">
+    <input id="autoScroll" type="checkbox"> Follow along — scroll to the paragraph being read
+  </label>
+
+  <div class="row">
+    <button id="save" class="primary">Save</button>
+    <button id="test">Test connection</button>
+    <button id="open">Open the reader page</button>
+    <span id="status" class="status"></span>
+  </div>
+
+  <p class="small">
+    Start the server in a terminal in the FORGE folder:
+    <code>.venv\Scripts\activate</code> then
+    <code>python -m forge.server --voice "%USERPROFILE%\forge\voices\my-voice"</code>
+  </p>
+
+  <script src="options.js"></script>
+</body>
+</html>

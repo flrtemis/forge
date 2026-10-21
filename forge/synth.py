@@ -20,7 +20,10 @@ CLI:
 import argparse
 import json
 import os
+import io
 import shutil
+import threading
+import wave
 import zipfile
 
 import numpy as np
@@ -133,58 +136,153 @@ def _device(device="auto"):
     return device
 
 
+class XttsVoice:
+    """One loaded voice, reusable across many lines of text.
+
+    Loading XTTS costs ~10-20 s and ~2 GB of VRAM; synthesising a sentence
+    costs ~1 s. Anything that speaks more than once (the browser server, a
+    batch of scripts) should hold one of these rather than call
+    `synthesize()` per line.
+
+    Not thread-safe: XTTS inference is not. Wrap it in `TTSEngine` (below)
+    if you need concurrency — that is what the HTTP server does.
+    """
+
+    def __init__(self, source=None, checkpoint=None, config=None, vocab=None,
+                 speaker_ref=None, device="auto", log=print):
+        from TTS.tts.configs.xtts_config import XttsConfig
+        from TTS.tts.models.xtts import Xtts
+
+        self.spec = describe(source, checkpoint, config, vocab, speaker_ref)
+        _check(self.spec)
+        self.device = _device(device)
+
+        log(f"[forge] loading {self.spec['checkpoint']} on {self.device} ...")
+        cfg = XttsConfig()
+        cfg.load_json(self.spec["config"])
+        self.config = cfg
+        self.model = Xtts.init_from_config(cfg)
+        self.model.load_checkpoint(cfg, checkpoint_path=self.spec["checkpoint"],
+                                   vocab_path=self.spec["vocab"], use_deepspeed=False)
+        self.model.to(self.device)
+        self.model.eval()
+
+        ref = self.spec["speaker_ref"]
+        (self.gpt_cond_latent,
+         self.speaker_embedding) = self.model.get_conditioning_latents(audio_path=[ref])
+        self.languages = self._languages()
+        log(f"[forge] voice ready ({self.spec['name']}), "
+            f"{len(self.languages)} languages")
+
+    def _languages(self):
+        langs = getattr(self.config, "languages", None) or ["en"]
+        if isinstance(langs, str):
+            langs = [langs]
+        return list(langs)
+
+    def wav(self, text, lang="en", temperature=0.7, speed=1.0, top_p=0.85,
+            top_k=50, repetition_penalty=10.0, split_sentences=True):
+        """Text -> float32 numpy waveform at 24 kHz."""
+        out = self.model.inference(
+            text, lang, self.gpt_cond_latent, self.speaker_embedding,
+            temperature=float(temperature),
+            speed=float(speed),
+            top_p=float(top_p),
+            top_k=int(top_k),
+            repetition_penalty=float(repetition_penalty),
+            enable_text_splitting=bool(split_sentences),
+        )
+        wav = out["wav"]
+        if hasattr(wav, "detach"):          # torch tensor
+            wav = wav.detach().cpu().numpy()
+        return np.asarray(wav, dtype=np.float32).reshape(-1)
+
+    def pcm16(self, text, **kw):
+        """Text -> 16-bit little-endian PCM bytes (what browsers play)."""
+        wav = np.clip(self.wav(text, **kw), -1.0, 1.0)
+        return (wav * 32767.0).astype("<i2").tobytes()
+
+
+class TTSEngine:
+    """A lazily-loaded voice + a lock, safe to share between threads.
+
+    The first `speak()` triggers the load, so an HTTP server can start
+    instantly and only pay for the model when the first sentence arrives.
+    """
+
+    def __init__(self, voice=None, device="auto", log=print):
+        self.source = voice
+        self.device = device
+        self.log = log
+        self._voice = None
+        self._lock = threading.Lock()
+
+    @property
+    def loaded(self):
+        return self._voice is not None
+
+    def voice(self):
+        if self._voice is None:
+            self._voice = XttsVoice(self.source, device=self.device, log=self.log)
+        return self._voice
+
+    def set_source(self, source):
+        """Point the engine at another voice; it loads on the next speak()."""
+        with self._lock:
+            self.source = source
+            self._voice = None
+
+    def speak(self, text, **kw):
+        """Text -> a complete WAV file (bytes), ready to POST to a browser."""
+        with self._lock:
+            return wav_bytes(self.voice().pcm16(text, **kw))
+
+    def describe(self):
+        v = self._voice
+        if v is None:
+            return {"loaded": False, "name": None,
+                    "languages": [], "device": None}
+        return {"loaded": True, "name": v.spec["name"],
+                "dir": v.spec["dir"], "device": v.device,
+                "languages": v.languages, "sample_rate": SAMPLE_RATE}
+
+
+def wav_bytes(pcm, sample_rate=SAMPLE_RATE, channels=1):
+    """Raw 16-bit PCM -> a complete RIFF/WAVE file.
+
+    Browsers will not decode bare PCM even if you say `audio/wav`; they need
+    the 44-byte header. `wave` writes it without touching disk.
+    """
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(channels)
+        w.setsampwidth(2)
+        w.setframerate(int(sample_rate))
+        w.writeframes(pcm)
+    return buf.getvalue()
+
+
 def load_voice(voice=None, checkpoint=None, config=None, vocab=None,
                speaker_ref=None, device="auto"):
     """Load a fine-tuned voice. `voice` may be a package folder or a .pth.
 
     Returns (model, spec, (gpt_cond_latent, speaker_embedding)).
     """
-    from TTS.tts.configs.xtts_config import XttsConfig
-    from TTS.tts.models.xtts import Xtts
-
-    spec = describe(voice, checkpoint, config, vocab, speaker_ref)
-    _check(spec)
-
-    key = (spec["checkpoint"], spec["speaker_ref"], device)
+    key = (voice, checkpoint, config, vocab, speaker_ref, device)
     if key in _model_cache:
         return _model_cache[key]
-
-    dev = _device(device)
-    cfg = XttsConfig()
-    cfg.load_json(spec["config"])
-    model = Xtts.init_from_config(cfg)
-    model.load_checkpoint(cfg, checkpoint_path=spec["checkpoint"],
-                          vocab_path=spec["vocab"], use_deepspeed=False)
-    model.to(dev)
-    model.eval()
-
-    ref = spec["speaker_ref"]
-    gpt_cond_latent, speaker_embedding = model.get_conditioning_latents(audio_path=[ref])
-    _model_cache[key] = (model, spec, (gpt_cond_latent, speaker_embedding))
+    v = XttsVoice(voice, checkpoint, config, vocab, speaker_ref, device)
+    _model_cache[key] = (v.model, v.spec, (v.gpt_cond_latent, v.speaker_embedding))
     return _model_cache[key]
 
 
 def synthesize(text, voice=None, out_wav="forge_out.wav", lang="en",
-               temperature=0.7, speed=1.0, top_p=0.85, top_k=50,
-               repetition_penalty=10.0, device="auto", split_sentences=True,
-               checkpoint=None, config=None, vocab=None, speaker_ref=None):
+               temperature=0.7, speed=1.0, device="auto",
+               checkpoint=None, config=None, vocab=None, speaker_ref=None,
+               voice_obj=None):
     """Speak `text` in the trained voice; writes a 24 kHz wav and returns its path."""
-    model, spec, (gpt_cond_latent, speaker_embedding) = load_voice(
-        voice, checkpoint=checkpoint, config=config, vocab=vocab,
-        speaker_ref=speaker_ref, device=device)
-    out = model.inference(
-        text, lang, gpt_cond_latent, speaker_embedding,
-        temperature=float(temperature),
-        speed=float(speed),
-        top_p=float(top_p),
-        top_k=int(top_k),
-        repetition_penalty=float(repetition_penalty),
-        enable_text_splitting=bool(split_sentences),
-    )
-    wav = out["wav"]
-    if hasattr(wav, "detach"):          # torch tensor
-        wav = wav.detach().cpu().numpy()
-    wav = np.asarray(wav, dtype=np.float32).reshape(-1)
+    v = voice_obj or XttsVoice(voice, checkpoint, config, vocab, speaker_ref, device)
+    wav = v.wav(text, lang, temperature=temperature, speed=speed)
     out_dir = os.path.dirname(os.path.abspath(out_wav))
     os.makedirs(out_dir, exist_ok=True)
     sf.write(out_wav, wav, SAMPLE_RATE)

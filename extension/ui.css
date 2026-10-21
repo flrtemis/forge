@@ -1,0 +1,40 @@
+:root {
+  --bg: #14161a; --panel: #1b1e24; --ink: #e7e4dd; --dim: #9aa0aa;
+  --accent: #e8b04b; --ok: #5fbf8a; --warn: #e06c5a; --line: #2a2e36;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 12px; background: var(--bg); color: var(--ink);
+  font: 13px/1.5 "Segoe UI", system-ui, sans-serif;
+}
+body.popup { width: 290px; }
+body.options { padding: 22px; max-width: 560px; }
+h1 { font-size: 15px; letter-spacing: .14em; margin: 0 0 10px; font-weight: 700; }
+h1 span { color: var(--accent); font-weight: 400; letter-spacing: .04em; }
+.pill { border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px; font-size: 11px; color: var(--dim); }
+.pill.ok { border-color: var(--ok); color: var(--ok); }
+.pill.warn { border-color: var(--warn); color: var(--warn); }
+button {
+  width: 100%; margin: 6px 0 0; padding: 8px 12px; cursor: pointer;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 7px;
+  font: inherit;
+}
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #1a1610; font-weight: 600; }
+.row { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; color: var(--dim); }
+.row output { color: var(--ink); font-variant-numeric: tabular-nums; }
+.row input[type="range"] { flex: 1; accent-color: var(--accent); }
+body.options label { display: block; margin: 0 0 14px; font-size: 12px; color: var(--dim); }
+body.options input[type="text"], body.options input[type="number"] {
+  display: block; width: 100%; margin-top: 4px; padding: 7px 9px;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 6px;
+  font: inherit;
+}
+body.options .check { display: flex; align-items: center; gap: 8px; }
+body.options .icon { flex: 0 0 auto; margin-left: 10px; padding: 5px 9px; }
+body.options .row button { width: auto; margin: 0; }
+.small { font-size: 11px; color: var(--dim); }
+.status { font-size: 11px; color: var(--dim); }
+.status.error { color: var(--warn); }
+code { background: var(--panel); padding: 1px 4px; border-radius: 4px; font-size: 11px; }
+a { color: var(--accent); }

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FORGE reader — your voice</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>FORGE <span>reader</span></h1>
+    <div class="bar">
+      <span id="voice-name" class="pill">checking…</span>
+      <label>Language <select id="lang"><option value="en">en</option></select></label>
+      <label>Speed <input id="speed" type="range" min="0.6" max="1.6" step="0.05" value="1">
+        <output id="speed-out">1.00×</output></label>
+      <label>Expressiveness <input id="temp" type="range" min="0.3" max="1.1" step="0.05" value="0.7">
+        <output id="temp-out">0.70</output></label>
+    </div>
+  </header>
+
+  <main>
+    <section id="paste">
+      <p class="hint">
+        Paste anything — an article, a chapter, a PDF you copied out — and press
+        <strong>Read aloud</strong> <kbd>Ctrl</kbd>+<kbd>Enter</kbd>.
+        Firefox Reader View works too: open this page in the sidebar
+        (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd> &rarr; Reader View), select text,
+        copy it here.
+      </p>
+      <textarea id="text" spellcheck="false" placeholder="Paste text here…"></textarea>
+      <div class="row">
+        <button id="go" class="primary">Read aloud</button>
+        <span class="hint small">Audio is generated locally by your own model. Nothing leaves this PC.</span>
+      </div>
+    </section>
+
+    <section id="reader" hidden>
+      <div class="row sticky">
+        <button id="play">Play</button>
+        <button id="stop">Stop</button>
+        <button id="back">New text</button>
+        <span id="status" class="status"></span>
+      </div>
+      <div id="lines" class="lines"></div>
+    </section>
+  </main>
+
+  <footer>
+    <span>FORGE · your voice, your machine.</span>
+    <span class="small">Tip: keep this tab pinned; the model stays warm in VRAM.</span>
+  </footer>
+
+  <script src="/reader.js"></script>
+</body>
+</html>

@@ -334,7 +334,10 @@ def build_app(workdir):
                         "```\n"
                         "Or the same file via `--checkpoint path\\to\\model.pth` when it "
                         "sits next to `config.json`, `vocab.json` and a reference `.wav`. "
-                        "`say.bat \"some text\"` does the same thing in one click.")
+                        "`say.bat \"some text\"` does the same thing in one click.\n\n"
+                        "**In the browser:** `serve-forge.bat`, then open "
+                        "<http://127.0.0.1:5004/reader> in Firefox — see "
+                        "`docs/FIREFOX.md`.")
 
         with gr.Tab("4 · Files"):
             gr.Markdown("Browse everything FORGE has created — datasets, checkpoints, exported voices — with sizes.")

@@ -1,0 +1,38 @@
+{
+  "manifest_version": 2,
+  "name": "FORGE — read the page in my voice",
+  "version": "1.0.0",
+  "description": "Speak the selected text (or the whole page) with your own FORGE XTTS voice, served from 127.0.0.1.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "forge-reader@localhost",
+      "strict_min_version": "115.0"
+    }
+  },
+  "permissions": [
+    "menus",
+    "activeTab",
+    "storage",
+    "http://127.0.0.1/*",
+    "http://localhost/*"
+  ],
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": false
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["player.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "browser_action": {
+    "default_title": "FORGE: read this page in my voice",
+    "default_popup": "popup.html"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": false
+  }
+}

@@ -79,6 +79,29 @@ say.bat "Hello world"
 Point anything at that command — scripts, the auto-TTS userscript's future
 local-server mode, your phone stack — and it's your voice speaking.
 
+## Read the web in your own voice (Firefox)
+
+`model.pth` is a PyTorch checkpoint, so it runs next to the browser, not inside
+it: a tiny local server turns text into WAVs and Firefox plays them.
+
+```bat
+serve-forge.bat
+:: or: python -m forge.server --voice "%USERPROFILE%\forge\voices\my-voice"
+```
+
+Then open <http://127.0.0.1:5004/reader> — paste an article, press **Read
+aloud**. It speaks in your voice, sentence by sentence, with speed /
+expressiveness controls and click-to-jump. Paste from Firefox Reader View for
+clean text.
+
+Want it **in place, on any page**? `extension/` is a Firefox add-on: right-click
+→ *FORGE: read this page / read the selection*. Load it via
+`about:debugging#/runtime/this-firefox` → *Load Temporary Add-on* →
+`extension/manifest.json`.
+
+Full walkthrough, signing the add-on for permanent install, the HTTP API
+(`POST /speak`), and the troubleshooting table: **[docs/FIREFOX.md](docs/FIREFOX.md)**.
+
 ## "I already have a model.pth — how do I run it?"
 
 A `.pth` is the *weights*. It is not yet a voice. XTTS also needs the config it
@@ -177,6 +200,7 @@ Every exported package is your responsibility once it leaves your machine.
 forge/
   run.py               # launcher
   run-forge.bat        # double-click launcher (activates .venv)
+  serve-forge.bat      # local TTS server for browsing (Firefox) — port 5004
   say.bat              # say.bat "hello" -> said.wav, played
   requirements.txt
   README.md
@@ -185,9 +209,13 @@ forge/
     app.py             # Gradio UI (Dataset -> Train -> Voice)
     dataset.py         # whisper transcription + segmentation -> CSVs
     train.py           # XTTS v2 GPT fine-tuning (Windows-safe)
-    synth.py           # inference + voice packaging + CLI
+    synth.py           # inference engine + voice packaging + CLI
+    server.py          # HTTP TTS server (Firefox reader, extensions, scripts)
+    web/               # the reader page (no build step, no CDN)
     files.py           # workdir tree browser
     roam/              # failover orchestrator (local -> Kaggle)
+  extension/           # Firefox add-on: read any page in your voice
+  docs/FIREFOX.md      # browser setup + troubleshooting
 ```
 
 `forge.synth` is the importable API too, if you'd rather drive it from your own
@@ -196,4 +224,10 @@ script:
 ```python
 from forge.synth import synthesize
 synthesize("Hello world", r"C:\Users\me\forge\voices\my-voice", "out.wav", "en")
+
+# many lines? load once, then speak as often as you like
+from forge.synth import TTSEngine
+engine = TTSEngine(r"C:\Users\me\forge\voices\my-voice")
+for line in ["first", "second", "third"]:
+    open(f"{line}.wav", "wb").write(engine.speak(line))
 ```
