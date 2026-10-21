@@ -166,10 +166,120 @@ def _import_hint(message: str) -> str:
             "\n\nTry:\n  python -m pip install --upgrade coqui-TTS\n" + _venv_hint())
 
 
+# --------------------------------------------------------------------------
+# torchaudio.load workaround (Windows: torchcodec wants FFmpeg DLLs we don't
+# have; torchaudio >= 2.9 sends every load through it, so loading a plain WAV
+# dies with "Could not load libtorchcodec"). FORGE hit this too and patched it;
+# here is the standalone version: read 8/16/24/32-bit and float WAVs with the
+# standard library and hand torchaudio a tensor.
+# --------------------------------------------------------------------------
+def _wav_chunks(path: str):
+    """Yield (chunk_id, payload) for a RIFF/WAVE file, with its format tag."""
+    with open(path, "rb") as fh:
+        header = fh.read(12)
+        if len(header) < 12 or header[:4] != b"RIFF" or header[8:12] != b"WAVE":
+            raise ValueError("not a RIFF/WAVE file")
+        fmt = 1
+        while True:
+            head = fh.read(8)
+            if len(head) < 8:
+                return
+            cid, size = head[:4], int.from_bytes(head[4:8], "little")
+            payload = fh.read(size)
+            if size & 1:                      # chunks are word-aligned
+                fh.read(1)
+            if cid == b"fmt ":
+                fmt = int.from_bytes(payload[:2], "little")
+            yield cid, payload, fmt
+
+
+def _read_wav_stdlib(path: str):
+    """PCM (8/16/24/32-bit) or IEEE-float WAV -> ((channels, samples) float32, rate).
+
+    Stdlib-only on purpose: torchaudio >= 2.9 decodes through torchcodec, which
+    needs FFmpeg *shared* DLLs that a Windows box usually doesn't have — that is
+    the "Could not load libtorchcodec" crash. A WAV is 44 bytes of header plus
+    PCM; we can read it ourselves.
+    """
+    import numpy as np
+
+    fmt = data = None
+    for cid, payload, _ in _wav_chunks(path):
+        if cid == b"fmt " and fmt is None:
+            fmt = payload
+        elif cid == b"data" and data is None:
+            data = payload
+            break
+    if fmt is None or data is None:
+        raise ValueError("missing fmt or data chunk")
+    if len(fmt) < 16:
+        raise ValueError("short fmt chunk")
+
+    tag = int.from_bytes(fmt[0:2], "little")
+    channels = int.from_bytes(fmt[2:4], "little") or 1
+    rate = int.from_bytes(fmt[4:8], "little")
+    bits = int.from_bytes(fmt[14:16], "little")
+    if tag == 0xFFFE and len(fmt) >= 26:          # WAVE_FORMAT_EXTENSIBLE
+        tag = int.from_bytes(fmt[24:26], "little")
+    if not rate or not bits:
+        raise ValueError(f"bad wav header (rate={rate}, bits={bits})")
+
+    if tag == 3:                                  # IEEE float
+        dtype = "<f4" if bits == 32 else "<f8" if bits == 64 else None
+        if dtype is None:
+            raise ValueError(f"unsupported float WAV width: {bits} bits")
+        samples = np.frombuffer(data, dtype=dtype).astype(np.float32)
+    elif tag == 1:                                # integer PCM
+        width = bits // 8
+        if width == 1:                            # unsigned 8-bit
+            samples = (np.frombuffer(data, dtype=np.uint8).astype(np.float32) - 128.0) / 128.0
+        elif width == 2:
+            samples = np.frombuffer(data, dtype="<i2").astype(np.float32) / 32768.0
+        elif width == 3:                          # 24-bit packed
+            b = np.frombuffer(data, dtype=np.uint8)[: len(data) // 3 * 3].reshape(-1, 3).astype(np.int32)
+            ints = b[:, 0] | (b[:, 1] << 8) | (b[:, 2] << 16)
+            ints = np.where(ints & 0x800000, ints - 0x1000000, ints)
+            samples = ints.astype(np.float32) / 8388608.0
+        elif width == 4:
+            samples = np.frombuffer(data, dtype="<i4").astype(np.float32) / 2147483648.0
+        else:
+            raise ValueError(f"unsupported PCM width: {bits} bits")
+    else:
+        raise ValueError(f"unsupported WAV format tag {tag} (compressed?)")
+
+    return samples.reshape(-1, channels).T.copy(), rate
+
+
+def patch_torchaudio_load(log=print) -> bool:
+    """Make torchaudio.load('.wav') work without torchcodec/FFmpeg."""
+    try:
+        import torch
+        import torchaudio
+    except Exception:
+        return False
+    if getattr(torchaudio, "_speak_patched", False):
+        return True
+    original = torchaudio.load
+
+    def load(uri, *args, **kwargs):
+        if str(uri).lower().endswith(".wav"):
+            try:
+                data, rate = _read_wav_stdlib(str(uri))
+                return torch.from_numpy(data), rate
+            except Exception as exc:            # fall through to torchaudio
+                log(f"[speak] stdlib wav read failed ({exc}); using torchaudio")
+        return original(uri, *args, **kwargs)
+
+    torchaudio.load = load
+    torchaudio._speak_patched = True
+    return True
+
+
 class Voice:
     """One loaded XTTS voice. Load costs ~15 s; each sentence ~1 s."""
 
     def __init__(self, spec: dict, device: str = "auto", log=print):
+        patch_torchaudio_load(log)
         try:
             import torch
             from TTS.tts.configs.xtts_config import XttsConfig
@@ -546,6 +656,9 @@ def read_input(args) -> str:
 # main
 # --------------------------------------------------------------------------
 def main(argv=None) -> int:
+    import warnings
+    warnings.filterwarnings("ignore", message=r".*torch\.jit\.script.*deprecated.*")
+    warnings.filterwarnings("ignore", message=r".*torch\.jit\.script.*")
     p = argparse.ArgumentParser(
         description="Read text aloud with your own trained XTTS voice (.pth).",
         formatter_class=argparse.RawDescriptionHelpFormatter,

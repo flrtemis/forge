@@ -91,6 +91,19 @@ Nothing else: no numpy install step (torch brings it), no flask, no gradio, no
 browser, no server, no add-on. Audio plays through `winsound`, which is part of
 Python on Windows.
 
+## Windows gotchas already handled
+
+Two things bite every Coqui/XTTS setup on Windows. Both are patched inside
+`speak.py`, so you don't have to think about them:
+
+1. **`Could not load libtorchcodec`** — torchaudio ≥ 2.9 decodes audio through
+   torchcodec, which wants FFmpeg *shared* DLLs. `speak.py` reads WAV files
+   itself (8/16/24/32-bit PCM, float, WAVE_FORMAT_EXTENSIBLE) and patches
+   `torchaudio.load`, so loading `speaker_ref.wav` never reaches torchcodec.
+2. **`Numba needs NumPy 2.3 or less. Got NumPy 2.4.`** — a numpy upgrade broke
+   Coqui's librosa/numba stack. Either `python -m pip install "numpy<2.4"`, or
+   run with FORGE's `.venv`, which is already consistent (`say.bat` prefers it).
+
 ## Speed
 
 The model takes ~15 s to load into VRAM the first time. After that each sentence
@@ -137,6 +150,7 @@ Still no FORGE, no extra software: that's a built-in Windows shortcut.
 | `does not look like an XTTS v2 checkpoint` | The `.pth` is from a different architecture (Bark, RVC, So-VITS…). |
 | `is missing: config, vocab, speaker_ref` | Point `--voice` at the exported folder, not a bare `.pth` on its own. |
 | `Missing Python package: TTS` | `pip install coqui-TTS`, or use FORGE's `.venv` (`say.bat` does). |
+| `Could not load libtorchcodec` / `FFmpeg is not properly installed` | Old torchaudio decoding a WAV. Handled: `speak.py` reads WAVs itself and patches `torchaudio.load`, so this should not appear. If it does, you're on an older copy — re-download. |
 | `Numba needs NumPy 2.3 or less. Got NumPy 2.4.` | A numpy/numba clash, not your model. `python -m pip install "numpy<2.4"` (or run with FORGE's `.venv`, which is already consistent). |
 | `[speak] no audio player here` | It saved numbered `.wav` files instead — open them. |
 | `CUDA out of memory` | `--device cpu`, or close whatever else is using the GPU. |
