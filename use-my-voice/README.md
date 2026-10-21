@@ -19,7 +19,19 @@ every `Ctrl`+`C` is spoken in your voice — no clicking, no browser, no FORGE.
 
 ---
 
-## First run: tell it where your model is
+## First run: prove the model loads
+
+```bat
+say.bat --check
+```
+
+It prints the four files it found, the checkpoint size, the device and the
+languages, and says `OK` — without speaking. If that works, everything after it
+works. (A 5–6 GB `model.pth` is normal: that's a full training checkpoint with
+optimizer state, not a stripped one. It needs a few GB of free RAM and a slow
+first load, then it's fast.)
+
+## Where your model is
 
 The folder FORGE exported already has everything:
 
@@ -89,6 +101,7 @@ That's why `--watch` exists: it loads once and stays loaded. If you run
 | Flag | What it does |
 |---|---|
 | `--voice PATH` | folder or `model.pth` (default: `voice.txt`, then `%USERPROFILE%\forge\voices\my-voice`) |
+| `--check` | load the model and report what it found, say nothing |
 | `--out file.wav` | save the whole thing as one wav instead of playing |
 | `--lang en` | language code (XTTS v2 has 17) |
 | `--speed 1.0` | 0.9 slower, 1.1 brisker |
@@ -116,6 +129,7 @@ Still no FORGE, no extra software: that's a built-in Windows shortcut.
 |---|---|
 | `Could not find your model.` | It lists every path it tried. Add `--voice` or a `voice.txt`. |
 | `…is only 12 bytes` | You pointed at a placeholder (a Git checkout), not the real model. |
+| `does not look like an XTTS v2 checkpoint` | The `.pth` is from a different architecture (Bark, RVC, So-VITS…). |
 | `is missing: config, vocab, speaker_ref` | Point `--voice` at the exported folder, not a bare `.pth` on its own. |
 | `Missing Python package: TTS` | `pip install coqui-TTS`, or use FORGE's `.venv` (`say.bat` does). |
 | `[speak] no audio player here` | It saved numbered `.wav` files instead — open them. |

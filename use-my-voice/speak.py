@@ -156,13 +156,25 @@ class Voice:
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = device
-        log(f"[speak] loading {os.path.basename(spec['checkpoint'])} on {device} ...")
+        self.torch = torch
+        gb = os.path.getsize(spec["checkpoint"]) / 1e9
+        log(f"[speak] loading {os.path.basename(spec['checkpoint'])} "
+            f"({gb:.1f} GB) on {device} ...")
+        if gb > 3:
+            log("[speak] that is a full training checkpoint (weights + optimizer "
+                "state). Loading it needs a few GB of free RAM and takes a while; "
+                "after that it is fast.")
 
         cfg = XttsConfig()
         cfg.load_json(spec["config"])
         model = Xtts.init_from_config(cfg)
-        model.load_checkpoint(cfg, checkpoint_path=spec["checkpoint"],
-                             vocab_path=spec["vocab"], use_deepspeed=False)
+        try:
+            model.load_checkpoint(cfg, checkpoint_path=spec["checkpoint"],
+                                  vocab_path=spec["vocab"], use_deepspeed=False)
+        except Exception as exc:                    # trainer-format checkpoints
+            log(f"[speak] standard load failed ({type(exc).__name__}: "
+                f"{str(exc).splitlines()[0]}) — trying as a raw state dict")
+            self._load_raw(model, spec["checkpoint"])
         model.to(device)
         model.eval()
 
@@ -171,6 +183,37 @@ class Voice:
          self.speaker_embedding) = model.get_conditioning_latents(
             audio_path=[spec["speaker_ref"]])
         log("[speak] ready.")
+
+    def _load_raw(self, model, checkpoint_path: str) -> None:
+        """Load a checkpoint Coqui's loader did not like.
+
+        FORGE's trainer writes full checkpoints ({"model": …, "optimizer": …});
+        older/simpler scripts write a bare state dict with a "model." prefix or
+        a "module." prefix from DataParallel. Try the plausible shapes.
+        """
+        torch = self.torch
+        blob = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+        state = blob
+        for key in ("model", "state_dict", "model_state_dict"):
+            if isinstance(blob, dict) and key in blob and isinstance(blob[key], dict):
+                state = blob[key]
+                break
+        cleaned = {}
+        for key, value in state.items():
+            for prefix in ("module.", "_orig_mod."):
+                if key.startswith(prefix):
+                    key = key[len(prefix):]
+            cleaned[key] = value
+        missing, unexpected = model.load_state_dict(cleaned, strict=False)
+        if len(missing) > len(cleaned) // 2:
+            raise SystemExit(
+                "This .pth does not look like an XTTS v2 checkpoint:\n"
+                f"  {checkpoint_path}\n"
+                f"  {len(missing)} of {len(cleaned)} tensors did not match the "
+                "model. Is it from a different trainer/architecture?")
+        if missing or unexpected:
+            self.log(f"[speak] loaded with {len(missing)} missing / "
+                     f"{len(unexpected)} extra tensors (usually harmless)")
 
     def say(self, text: str, lang="en", speed=1.0, temperature=0.7) -> bytes:
         """Text -> 16-bit mono 24 kHz WAV bytes (header included)."""
@@ -490,6 +533,8 @@ def main(argv=None) -> int:
     p.add_argument("--speed", type=float, default=1.0)
     p.add_argument("--temperature", type=float, default=0.7)
     p.add_argument("--device", default="auto", choices=["auto", "cuda", "cpu"])
+    p.add_argument("--check", action="store_true",
+                   help="load the model, report what it found, say nothing")
     p.add_argument("--raw", action="store_true", help="do not strip markdown")
     p.add_argument("--quiet", action="store_true")
     args = p.parse_args(argv)
@@ -499,7 +544,21 @@ def main(argv=None) -> int:
 
     spec = find_voice(args.voice)
     check_voice(spec)
+    if args.check:
+        print(f"voice folder : {spec['dir']}")
+        print(f"checkpoint   : {spec['checkpoint']} "
+              f"({os.path.getsize(spec['checkpoint']) / 1e9:.2f} GB)")
+        print(f"config       : {spec['config']}")
+        print(f"vocab        : {spec['vocab']}")
+        print(f"speaker ref  : {spec['speaker_ref']}")
     voice = Voice(spec, device=args.device, log=log)
+    if args.check:
+        langs = getattr(voice.model.config, "languages", None) or ["en"]
+        print(f"device       : {voice.device}")
+        print(f"languages    : {', '.join(langs) if isinstance(langs, list) else langs}")
+        print("OK — the model loaded and the voice is ready. Now drop --check "
+              "and give it text.")
+        return 0
     player = Player(save_path=_expand(args.out) if args.out else None)
 
     def to_chunks(text: str) -> list[str]:
