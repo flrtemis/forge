@@ -69,11 +69,16 @@ it, FORGE's `.venv` next door, `py -3.11` / `-3.12` / `-3.10` / `-3.13`, then
 plain `python`. First one that can `import torch, TTS` wins. If you installed
 the packages with plain `pip` (no venv), plain `python` is what it will use.
 
-Check it yourself with:
+Check it yourself with a *deep* import — `import TTS` alone passes even when the
+audio stack is broken, because Coqui loads most of itself lazily:
 
 ```bat
-python -c "import torch, TTS; print('ok')"
+python -c "from TTS.tts.configs.xtts_config import XttsConfig; print('ok')"
 ```
+
+If that raises `Numba needs NumPy 2.3 or less. Got NumPy 2.4.`, run
+`python -m pip install "numpy<2.4"` — a numpy upgrade elsewhere broke the
+librosa/numba stack that Coqui needs. Nothing to do with your model.
 
 If that fails, install them once. On a new machine:
 
@@ -132,6 +137,7 @@ Still no FORGE, no extra software: that's a built-in Windows shortcut.
 | `does not look like an XTTS v2 checkpoint` | The `.pth` is from a different architecture (Bark, RVC, So-VITS…). |
 | `is missing: config, vocab, speaker_ref` | Point `--voice` at the exported folder, not a bare `.pth` on its own. |
 | `Missing Python package: TTS` | `pip install coqui-TTS`, or use FORGE's `.venv` (`say.bat` does). |
+| `Numba needs NumPy 2.3 or less. Got NumPy 2.4.` | A numpy/numba clash, not your model. `python -m pip install "numpy<2.4"` (or run with FORGE's `.venv`, which is already consistent). |
 | `[speak] no audio player here` | It saved numbered `.wav` files instead — open them. |
 | `CUDA out of memory` | `--device cpu`, or close whatever else is using the GPU. |
 | Nothing at all, no error | The clipboard was empty — copy something first. |

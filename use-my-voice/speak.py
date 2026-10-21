@@ -135,6 +135,37 @@ def check_voice(spec: dict) -> None:
 # --------------------------------------------------------------------------
 # model
 # --------------------------------------------------------------------------
+def _venv_hint() -> str:
+    """Point at FORGE's own virtualenv when it exists next to this script."""
+    for rel in (r"..\.venv\Scripts\python.exe", r"..\.venv\bin\python",
+                r".venv\Scripts\python.exe"):
+        candidate = os.path.abspath(os.path.join(HERE, rel))
+        if os.path.isfile(candidate):
+            return ("Or use FORGE's working virtualenv, no installs needed:\n"
+                    f'  "{candidate}" speak.py "hello"')
+    return ""
+
+
+def _import_hint(message: str) -> str:
+    """Turn the usual dependency clashes into a one-line fix."""
+    lower = message.lower()
+    if "numba needs numpy" in lower:
+        return (
+            "Your Python has conflicting package versions (Coqui's audio stack "
+            "imports numba, and numba refuses the installed numpy).\n\n"
+            "This is NOT your model. Fix it with one command, then rerun:\n"
+            '  python -m pip install "numpy<2.4"\n\n'
+            "Something upgraded numpy to 2.4 after FORGE was set up. If you would "
+            "rather touch nothing global, use FORGE's own virtualenv:\n"
+            + (_venv_hint() or "  ..\\.venv\\Scripts\\python.exe speak.py \"hello\""))
+    if "no module named 'librosa'" in lower or "no module named 'numba'" in lower:
+        return (
+            "Coqui TTS is installed but its audio dependencies are not.\n"
+            "  python -m pip install librosa numba\n" + _venv_hint())
+    return ("Could not import Coqui TTS:\n  " + message +
+            "\n\nTry:\n  python -m pip install --upgrade coqui-TTS\n" + _venv_hint())
+
+
 class Voice:
     """One loaded XTTS voice. Load costs ~15 s; each sentence ~1 s."""
 
@@ -150,8 +181,9 @@ class Voice:
                 "  pip install torch torchaudio --index-url "
                 "https://download.pytorch.org/whl/cu130\n"
                 "  pip install coqui-TTS\n"
-                "Or run this with FORGE's virtualenv: "
-                r"..\.venv\Scripts\python.exe speak.py ...")
+                + _venv_hint())
+        except ImportError as exc:
+            raise SystemExit(_import_hint(str(exc)))
 
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
