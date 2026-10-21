@@ -8,40 +8,60 @@ REM    say.bat --file notes.txt     speak a file
 REM    say.bat --watch              speak whatever you copy (Ctrl+C to quit)
 REM    say.bat "hi" --out hi.wav    save instead of playing
 REM
-REM  First run only: put your model folder in voice.txt, or pass
-REM    say.bat "hi" --voice "C:\Users\you\forge\voices\my-voice"
-REM  (Skip "Add argument" fuss: paths with spaces need quotes.)
+REM  It finds a Python that can actually import torch and coqui-TTS:
+REM  FORGE's .venv if present, else the "py" launcher, else python on PATH.
+REM  Force one with:  set FORGE_PY=C:\path\to\python.exe
 REM ============================================================
 setlocal
 cd /d "%~dp0"
 
 set "PY="
-REM 1. FORGE's virtualenv, if it's the folder next door
-if exist "%~dp0..\.venv\Scripts\python.exe" set "PY=%~dp0..\.venv\Scripts\python.exe"
-REM 2. a venv inside this folder
-if not defined PY if exist "%~dp0.venv\Scripts\python.exe" set "PY=%~dp0.venv\Scripts\python.exe"
-REM 3. whatever python is on PATH
-if not defined PY set "PY=python"
+if defined FORGE_PY call :check "%FORGE_PY%"
+if not defined PY if exist "%~dp0..\.venv\Scripts\python.exe" call :check "%~dp0..\.venv\Scripts\python.exe"
+if not defined PY if exist "%~dp0.venv\Scripts\python.exe" call :check "%~dp0.venv\Scripts\python.exe"
+if not defined PY call :checkpy 3.11
+if not defined PY call :checkpy 3.12
+if not defined PY call :checkpy 3.10
+if not defined PY call :checkpy 3.13
+if not defined PY call :checkplain
 
-"%PY%" -c "import torch, TTS" 2>nul
-if errorlevel 1 (
-    echo.
-    echo [!] This Python cannot see torch / coqui-TTS:
-    echo     "%PY%"
-    echo.
-    echo     Install them once:
-    echo       pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu130
-    echo       pip install coqui-TTS
-    echo.
-    echo     ...or run this with FORGE's venv explicitly:
-    echo       "..\.venv\Scripts\python.exe" speak.py "hello"
-    echo.
-    pause
-    exit /b 1
-)
+if not defined PY goto :nopython
 
-REM No arguments at all = speak the clipboard.
 "%PY%" speak.py %*
 set "RC=%ERRORLEVEL%"
 if not "%RC%"=="0" pause
 endlocal & exit /b %RC%
+
+:check
+"%~1" -c "import torch, TTS" >nul 2>&1
+if not errorlevel 1 set "PY=%~1"
+exit /b
+
+:checkpy
+py -%~1 -c "import torch, TTS" >nul 2>&1
+if not errorlevel 1 set "PY=py -%~1"
+exit /b
+
+:checkplain
+python -c "import torch, TTS" >nul 2>&1
+if not errorlevel 1 set "PY=python"
+exit /b
+
+:nopython
+echo.
+echo [!] I could not find a Python that can import torch and coqui-TTS.
+echo.
+echo     Find out what you have:
+echo       where python
+echo       py -0p
+echo       python -c "import torch, TTS; print('ok')"
+echo.
+echo     If the last one prints an error, install the two packages once:
+echo       pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu130
+echo       pip install coqui-TTS
+echo.
+echo     Already have a venv elsewhere? Tell me where:
+echo       set FORGE_PY=C:\path\to\python.exe
+echo.
+pause
+exit /b 1

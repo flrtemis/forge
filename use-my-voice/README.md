@@ -50,9 +50,20 @@ A single `model.pth` works too — as long as `config.json`, `vocab.json` and a
 
 ## Requirements
 
-Python with **torch + coqui-TTS**. If you trained with FORGE you already have
-them in `C:\Users\l3ung\forge\.venv`, and `say.bat` uses it automatically. On a
-new machine:
+Python with **torch + coqui-TTS**.
+
+`say.bat` finds that Python itself — it tries, in order: `%FORGE_PY%` if you set
+it, FORGE's `.venv` next door, `py -3.11` / `-3.12` / `-3.10` / `-3.13`, then
+plain `python`. First one that can `import torch, TTS` wins. If you installed
+the packages with plain `pip` (no venv), plain `python` is what it will use.
+
+Check it yourself with:
+
+```bat
+python -c "import torch, TTS; print('ok')"
+```
+
+If that fails, install them once. On a new machine:
 
 ```bat
 pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu130
