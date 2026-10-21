@@ -1,0 +1,5 @@
+voice/
+voice.txt
+*.wav
+say_*.wav
+__pycache__/
