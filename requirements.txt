@@ -1,0 +1,25 @@
+# FORGE — train your own TTS voice, locally, offline.
+#
+# 1. Install Python 3.10 or 3.11, then a CUDA build of torch:
+#      pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu130
+#      (cu130: Blackwell/sm_120 cards like the 5070 Ti need CUDA 12.8+ kernels)
+# 2. Install the rest:
+#      pip install -r requirements.txt
+# 3. Launch:
+#      python run.py
+#
+# Then open http://127.0.0.1:5003 and follow the three tabs:
+#   1. Dataset  — upload your voice recordings, build training clips
+#   2. Train    — fine-tune XTTS v2 on your voice (needs NVIDIA GPU, 12GB+ VRAM)
+#   3. Voice    — test it, then export your voice as a portable package
+#
+# First run downloads the XTTS v2 base model (~2GB) and Whisper large-v2 (~3GB).
+# After that, everything runs fully offline.
+
+gradio>=4.0
+coqui-TTS>=0.22.0
+faster-whisper>=1.0.0
+pandas>=2.0
+librosa>=0.10
+soundfile>=0.12
+tqdm>=4.65

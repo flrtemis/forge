@@ -1,0 +1,68 @@
+FORGE recording script, read naturally, at your normal pace, in a quiet room.
+Takes about 10 minutes to read aloud. The goal is variety: questions, statements,
+numbers, names, short and long sentences. Don't perform,  just talk like yourself.
+
+(https://cloud.google.com/text-to-speech#put-text-to-speech-into-action)
+(Gemini 3.1 Flash TTS Preview)
+(English United States)
+(Achernar)
+(Read aloud in a fluid, conversational tone.)
+
+--- set 1: warm-up, short sentences ---
+The quick brown fox jumps over the lazy dog.
+Pack my box with five dozen liquor jugs.
+How vexingly quick daft zebras jump.
+Bright vixens jump; dozy fowl quack.
+Two driven jocks help fax my big quiz.
+The five boxing wizards jump quickly.
+Jackdaws love my big sphinx of quartz.
+Weave a circle round him thrice.
+A very bad quack might jinx zippy fowls.
+
+--- set 2: questions ---
+What time is it, and where did I leave my keys?
+Can you hear me clearly from over there?
+Why does the wind sound different at night?
+How many miles have we walked today?
+Would you like coffee, or would you prefer tea?
+Is this microphone actually turned on?
+Do you remember what we talked about yesterday?
+Where should we go for dinner tonight?
+Have you ever seen the ocean in winter?
+
+--- set 3: numbers, names, everyday speech ---
+My phone number is five five five, zero one, three seven.
+The meeting starts at nine thirty sharp, don't be late.
+I bought twelve apples, three loaves of bread, and a gallon of milk.
+Sarah, Mike, and Jonathan are coming over on Friday.
+The address is 742 Evergreen Terrace, apartment 5B.
+It costs forty-nine dollars and ninety-nine cents.
+We left at seven fifteen and arrived just before noon.
+Call me back when you get this message, please.
+
+--- set 4: longer, flowing sentences ---
+There's something deeply satisfying about building a thing with your own hands and knowing that every part of it answers to you and no one else.
+The rain started just after midnight, tapping softly against the window while the house settled into its familiar nighttime creaks and sighs.
+I spent the whole afternoon in the workshop, losing track of time the way you do when the work is interesting enough to swallow the hours whole.
+She told me once that the secret to a good story is knowing which details to leave out, and I've been turning that over in my head ever since.
+The old truck coughed, sputtered, and finally roared to life, and we cheered like we'd just won something far more important than a working engine.
+
+--- set 5: emotion and emphasis ---
+I can't believe it actually worked!
+No. Absolutely not. Not this time.
+Listen,  this part is important, so pay attention.
+Wow, that sounds incredible. Say it again.
+I'm telling you, it was the best day of the entire year.
+Stop. Wait. Did you hear that?
+Yes! Finally! That's exactly what I wanted.
+Hmm, I'm not so sure about that idea.
+
+--- set 6: cool-down, conversational ---
+So anyway, that's the whole story, more or less.
+Let me know what you think when you get a chance.
+I'll be around all afternoon if you want to talk it through.
+Thanks for listening,  I know that was a lot.
+Alright, I'm going to grab some water and stretch my legs.
+We'll pick this up again tomorrow, same time.
+Take care of yourself, and don't work too late.
+Goodnight, and sleep well.
