@@ -39,21 +39,47 @@ REM ---- flags on the command line? use them as-is, no menu ----
 if not "%~1"=="" goto :run_args
 
 REM ---- otherwise: ask ----
-REM Load saved settings. One line with everything on it works, and so does
-REM one flag per line, with blank lines and # / REM comments in between.
-set "OPTIONS="
+REM The saved settings are read into four separate parts, so that picking a
+REM menu option changes ONE part and leaves the rest alone (2 then 4 = slower
+REM AND steadier). Anything unrecognised lands in EX and is passed through -
+REM that includes old-style lines with several flags on them, and a flag whose
+REM value sits on the next line (EX keeps them in order, a space apart).
+set "SP="
+set "TP="
+set "LG="
+set "EX="
 if exist "%SAVED%" (
     for /f "usebackq tokens=* delims=" %%L in ("%SAVED%") do (
-        set "LINE=%%L"
-        if not "!LINE:~0,1!"=="#" (
-            if /i not "!LINE:~0,3!"=="REM" (
-                if /i not "!LINE:~0,2!"=="::" (
-                    set "OPTIONS=!OPTIONS! !LINE!"
-                )
+        set "L=%%L"
+        if not "!L!"=="" if not "!L:~0,1!"=="#" if /i not "!L:~0,3!"=="REM" if /i not "!L:~0,2!"=="::" (
+            if /i "!L:~0,8!"=="--speed " (
+                set "V=!L:~8!"
+                if "!V: --=!"=="!V!" (set "SP=!V!") else set "EX=!EX! !L!"
+            ) else if /i "!L:~0,14!"=="--temperature " (
+                set "V=!L:~14!"
+                if "!V: --=!"=="!V!" (set "TP=!V!") else set "EX=!EX! !L!"
+            ) else if /i "!L:~0,7!"=="--lang " (
+                set "V=!L:~7!"
+                if "!V: --=!"=="!V!" (set "LG=!V!") else set "EX=!EX! !L!"
+            ) else (
+                set "EX=!EX! !L!"
             )
         )
     )
 )
+call :build
+
+REM ---- the four parts, glued back into one set of flags ----
+:build
+set "OPTIONS="
+REM  Extras go first, so anything switched on in the menu comes after them
+REM  and wins (speak.py keeps the last value it is given for a flag).
+if defined EX set "OPTIONS=!OPTIONS! !EX!"
+if defined SP set "OPTIONS=!OPTIONS! --speed !SP!"
+if defined TP set "OPTIONS=!OPTIONS! --temperature !TP!"
+if defined LG set "OPTIONS=!OPTIONS! --lang !LG!"
+if defined OPTIONS set "OPTIONS=!OPTIONS:~1!"
+exit /b
 
 REM ==================================================================
 REM  The menu. If WAIT is above zero it counts down visibly: one
@@ -66,11 +92,11 @@ set "LEFT=%WAIT%"
 
 :countdown
 call :draw
-REM  X is the 9th character, so both a timeout and a literal X give
-REM  ERRORLEVEL 9 - that is the "one second has gone by" tick.
-choice /C 123456NQX /N /T 1 /D X >nul
+REM  X is the last character, so both a timeout and a literal X give
+REM  ERRORLEVEL 10 - that is the "one second has gone by" tick.
+choice /C 1234567NQX /N /T 1 /D X >nul
 set "KEY=%ERRORLEVEL%"
-if "%KEY%"=="9" goto :tick
+if "%KEY%"=="10" goto :tick
 goto :handle
 
 :tick
@@ -81,42 +107,72 @@ goto :countdown
 :menu_untimed
 set "LEFT=0"
 call :draw
-choice /C 123456NQ /N >nul
+choice /C 1234567NQ /N >nul
 set "KEY=%ERRORLEVEL%"
 goto :handle
 
-REM ---- what each key does (1-6 pick a setting, 7 = start, 8 = quit) ----
+REM ---- what each key does. 1-6 switch a setting on or off (they add up),
+REM     7 or N starts with whatever is on now, Q quits.
 :handle
-if "%KEY%"=="1" set "OPTIONS=" & goto :save
-if "%KEY%"=="2" set "OPTIONS=--speed 0.9" & goto :save
-if "%KEY%"=="3" set "OPTIONS=--temperature 0.85" & goto :save
-if "%KEY%"=="4" set "OPTIONS=--temperature 0.6" & goto :save
+if "%KEY%"=="1" goto :clear
+if "%KEY%"=="2" goto :toggle_speed
+if "%KEY%"=="3" goto :toggle_expr
+if "%KEY%"=="4" goto :toggle_steady
 if "%KEY%"=="5" goto :language
 if "%KEY%"=="6" goto :custom
 if "%KEY%"=="7" goto :start
-if "%KEY%"=="8" goto :quit
+if "%KEY%"=="8" goto :start
+if "%KEY%"=="9" goto :quit
 goto :menu
+
+:clear
+set "SP=" & set "TP=" & set "LG=" & set "EX="
+goto :save
+
+:toggle_speed
+if defined SP (set "SP=") else (set "SP=0.9")
+goto :save
+
+:toggle_expr
+if "!TP!"=="0.85" (set "TP=") else (set "TP=0.85")
+goto :save
+
+:toggle_steady
+if "!TP!"=="0.6" (set "TP=") else (set "TP=0.6")
+goto :save
 
 REM ---- one screen of menu, with the countdown at the bottom ----
 :draw
+set "C1= "
+set "C2= "
+set "C3= "
+set "C4= "
+set "C5= "
+set "C6= "
+if not defined SP if not defined TP if not defined LG if not defined EX set "C1=x"
+if defined SP set "C2=x"
+if "!TP!"=="0.85" set "C3=x"
+if "!TP!"=="0.6" set "C4=x"
+if defined LG set "C5=x"
+if defined EX set "C6=x"
 cls
 echo.
 echo   ============================================================
-echo     MY VOICE
+echo     MY VOICE                                     x = switched on
 echo   ============================================================
 echo.
-if defined OPTIONS echo     Right now: %OPTIONS%
-if not defined OPTIONS echo     Right now: normal speech
+if defined OPTIONS (echo     Right now: !OPTIONS!) else echo     Right now: normal speech
 echo.
-echo     1   Normal speech
-echo     2   Slower and clearer        --speed 0.9
-echo     3   More expressive           --temperature 0.85
-echo     4   Steadier, predictable     --temperature 0.6
-echo     5   Another language ...      --lang es
-echo     6   Custom flags ...          type anything
+echo    !C1!  1   Normal speech            switch everything off
+echo    !C2!  2   Slower and clearer       --speed 0.9
+echo    !C3!  3   More expressive          --temperature 0.85
+echo    !C4!  4   Steadier, predictable    --temperature 0.6
+echo    !C5!  5   Another language ...     --lang es
+echo    !C6!  6   Extra flags ...          type anything
 echo.
-echo     N   Start watching the clipboard with the above
-echo     Q   Quit
+echo        7   Start watching the clipboard with the above
+echo        Q   Quit
+echo     Press as many numbers as you like before starting - they add up.
 echo.
 call :bar
 exit /b
@@ -147,33 +203,50 @@ echo.
 exit /b
 
 :save
-REM  Save exactly what was picked. "echo" with nothing after it prints
-REM  "ECHO is on.", so an empty choice deletes the file instead.
-if defined OPTIONS (
-    > "%SAVED%" echo %OPTIONS%
-) else (
+call :build
+REM  One flag per line, so the menu can read the four parts back separately.
+REM  "echo" with nothing after it prints "ECHO is on.", so when everything is
+REM  switched off the file is deleted instead of written.
+if not defined OPTIONS (
     del "%SAVED%" >nul 2>&1
+) else (
+    > "%SAVED%" break
+    if defined SP (
+        >> "%SAVED%" echo --speed !SP!
+    )
+    if defined TP (
+        >> "%SAVED%" echo --temperature !TP!
+    )
+    if defined LG (
+        >> "%SAVED%" echo --lang !LG!
+    )
+    if defined EX (
+        >> "%SAVED%" echo !EX!
+    )
 )
 goto :menu
 
 :language
 echo.
 echo   Languages: en es fr de it pt pl tr ru nl cs ar zh-cn hu ko ja hi
+if defined LG echo   Switched on now: --lang !LG!
 set "LANGCODE="
-set /p LANGCODE=  Type a language code (Enter for es): 
-if not defined LANGCODE set "LANGCODE=es"
-set "OPTIONS=--lang %LANGCODE%"
+set /p LANGCODE=  Type a language code (Enter switches it off): 
+if defined LANGCODE (set "LG=!LANGCODE!") else set "LG="
 goto :save
 
 :custom
 echo.
-echo   Examples:  --speed 0.9   --temperature 0.85   --lang de   --speak-now
-echo   Combine:   --speed 0.9 --temperature 0.85
-set "OPTIONS="
-set /p OPTIONS=  Flags: 
+echo   Anything speak.py understands can go here, on top of what is on.
+echo   Examples:  --device cpu    --speak-now    --speed 1.1
+if defined EX echo   Switched on now: !EX!
+set "CUSTOM="
+set /p CUSTOM=  Extra flags (Enter switches them off): 
+if defined CUSTOM (set "EX=!CUSTOM!") else set "EX="
 goto :save
 
 :start
+call :build
 cls
 echo.
 echo   ============================================================

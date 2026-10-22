@@ -124,22 +124,42 @@ to get them in. Use whichever fits the moment.
 Double-click it and a menu appears:
 
 ```
-   1   Normal speech
-   2   Slower and clearer        --speed 0.9
-   3   More expressive           --temperature 0.85
-   4   Steadier, predictable     --temperature 0.6
-   5   Another language ...      --lang es
-   6   Custom flags ...          type anything
+  ============================================================
+    MY VOICE                                     x = switched on
+  ============================================================
 
-   N   Start watching the clipboard with the above
-   Q   Quit
+    Right now: normal speech
+
+   x  1   Normal speech            switch everything off
+      2   Slower and clearer       --speed 0.9
+      3   More expressive          --temperature 0.85
+      4   Steadier, predictable    --temperature 0.6
+      5   Another language ...     --lang es
+      6   Extra flags ...          type anything
+
+       7   Start watching the clipboard with the above
+       Q   Quit
+    Press as many numbers as you like before starting - they add up.
 
     [##########----------]  4s  then it starts on its own
 ```
 
-Press a number to change the voice, then `N` (or let the countdown run out and
-it starts with **the settings you used last time** — it remembers them in
-`%LOCALAPPDATA%\MyVoice\settings.txt`). No editing, ever.
+**Each number is a switch, not a choice.** Press `2` and `4` and you get both:
+
+```
+    Right now: --speed 0.9 --temperature 0.6
+
+   x  2   Slower and clearer       --speed 0.9
+   x  4   Steadier, predictable    --temperature 0.6
+```
+
+Press the same number again to switch it off; `3` and `4` are the two
+temperatures, so pressing one releases the other. `1` clears everything at
+once. When it looks right, press `7` (or `N`) — or just let the countdown run
+out and it starts with whatever is ticked.
+
+Everything you tick is remembered in `%LOCALAPPDATA%\MyVoice\settings.txt`, so
+next time it opens the same way. No editing, ever.
 
 ### 1z. How long the menu waits
 
@@ -175,32 +195,42 @@ plenty.
 
 ### 1a. What `settings.txt` should look like
 
-The menu saves your choice in `%LOCALAPPDATA%\MyVoice\settings.txt`. Open it
+The menu saves what you switched on in `%LOCALAPPDATA%\MyVoice\settings.txt`. Open it
 with `notepad "%LOCALAPPDATA%\MyVoice\settings.txt"` — that's where you can
 write several settings and see them all at once.
 
-**Everything on one line** (this is what the menu writes):
+**One flag per line** — this is what the menu writes, because it lets each
+switch be read back separately (that is how `2` and `4` coexist):
+
+```
+--speed 0.9
+--temperature 0.6
+```
+
+**Everything on one line** — the older, hand-written style. Still works: a line
+holding several flags is passed to `speak.py` exactly as written. The only
+difference is that the menu shows it under `Right now:` instead of ticking a
+box, and a flag you switch on later wins, because it comes after.
 
 ```
 --speed 0.9 --temperature 0.85 --lang es
 ```
 
-**One thing per line** — same result, easier to read and edit. Blank lines and
-comments (`#`, `REM`, `::`) are fine and are ignored:
+Blank lines and comments (`#`, `REM`, `::`) are fine and are ignored:
 
 ```
 # My Voice settings
 --speed 0.9
 
---temperature 0.85
 REM slower is clearer for long documents
---lang es
+--temperature 0.6
 ```
 
 Rules that matter:
 
-- A flag and its value can share a line (`--speed 0.9`) or sit on separate
-  lines; the lines are joined with spaces, so both work.
+- Keep a flag and its value on the same line (`--speed 0.9`). The menu reads
+  `--speed`, `--temperature` and `--lang` back as switches, so it can tick
+  them; every other line is passed through untouched.
 - Paths containing spaces need quotes: `--voice "D:\My Voices\my-voice"`.
 - Only pass flags the script understands (`speak.py --help`); a typo is reported
   as `unrecognized arguments: --speeed` rather than silently ignored.
@@ -227,7 +257,8 @@ keystrokes at launch:
    ```
 4. Rename it *My Voice - Slow*. Repeat for *- Lively*, *- Spanish*.
 
-Double-clicking it skips the menu and runs with those flags.
+Double-clicking it skips the menu and runs with those flags — it is exactly
+what the menu does when you tick two boxes, just without the pause.
 
 ### 3. Drag a text file onto the icon
 
