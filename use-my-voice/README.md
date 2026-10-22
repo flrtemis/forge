@@ -139,6 +139,44 @@ Press a number to change the voice, then `N` (or wait 8 seconds and it starts
 with **the settings you used last time** — it remembers them in
 `%LOCALAPPDATA%\MyVoice\settings.txt`). No editing, ever.
 
+### 1a. What `settings.txt` should look like
+
+The menu saves your choice in `%LOCALAPPDATA%\MyVoice\settings.txt`. Open it
+with `notepad "%LOCALAPPDATA%\MyVoice\settings.txt"` — that's where you can
+write several settings and see them all at once.
+
+**Everything on one line** (this is what the menu writes):
+
+```
+--speed 0.9 --temperature 0.85 --lang es
+```
+
+**One thing per line** — same result, easier to read and edit. Blank lines and
+comments (`#`, `REM`, `::`) are fine and are ignored:
+
+```
+# My Voice settings
+--speed 0.9
+
+--temperature 0.85
+REM slower is clearer for long documents
+--lang es
+```
+
+Rules that matter:
+
+- A flag and its value can share a line (`--speed 0.9`) or sit on separate
+  lines; the lines are joined with spaces, so both work.
+- Paths containing spaces need quotes: `--voice "D:\My Voices\my-voice"`.
+- Only pass flags the script understands (`speak.py --help`); a typo is reported
+  as `unrecognized arguments: --speeed` rather than silently ignored.
+- **Save as ANSI or UTF-8 *without* BOM.** Notepad's default ("UTF-8") is fine;
+  "UTF-8 with BOM" puts three invisible bytes in front of the first flag, which
+  then isn't recognised as a flag. `--watch` now prints
+  `ignoring stray text argument(s)` when that happens, so it isn't silent.
+- No `--watch` needed in the file (the .bat adds it), and `--voice` is supplied
+  by the .bat too — anything you add here wins, because it comes last.
+
 ### 2. One desktop icon per mood (shortcut arguments)
 
 A Windows shortcut can carry flags, so you get the same result with zero

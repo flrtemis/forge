@@ -1,5 +1,5 @@
 @echo off
-setlocal EnableExtensions
+setlocal EnableExtensions EnableDelayedExpansion
 title My Voice
 
 REM ==================================================================
@@ -30,8 +30,21 @@ REM ---- flags on the command line? use them as-is, no menu ----
 if not "%~1"=="" goto :run_args
 
 REM ---- otherwise: ask ----
+REM Load saved settings. One line with everything on it works, and so does
+REM one flag per line, with blank lines and # / REM comments in between.
 set "OPTIONS="
-if exist "%SAVED%" set /p OPTIONS=<"%SAVED%"
+if exist "%SAVED%" (
+    for /f "usebackq tokens=* delims=" %%L in ("%SAVED%") do (
+        set "LINE=%%L"
+        if not "!LINE:~0,1!"=="#" (
+            if /i not "!LINE:~0,3!"=="REM" (
+                if /i not "!LINE:~0,2!"=="::" (
+                    set "OPTIONS=!OPTIONS! !LINE!"
+                )
+            )
+        )
+    )
+)
 
 :menu
 cls

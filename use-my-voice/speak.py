@@ -715,6 +715,12 @@ def main(argv=None) -> int:
 
     try:
         if args.watch:
+            if args.text:
+                # --watch reads the clipboard, so loose words here are a mistake:
+                # usually a flag that got mangled (e.g. a UTF-8 BOM in a settings
+                # file turns "--speed" into text) - say so instead of ignoring it.
+                log("[speak] ignoring stray text argument(s): "
+                    + " ".join(args.text)[:120])
             if not sys.platform.startswith("win"):
                 log("[speak] --watch uses the clipboard; on this OS it may not work")
             log("[speak] watching the clipboard — copy text anywhere to hear it. "
