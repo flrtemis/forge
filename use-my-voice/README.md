@@ -114,12 +114,46 @@ are no gaps.
 That's why `--watch` exists: it loads once and stays loaded. If you run
 `say.bat` fresh for every sentence you pay the 15 s every time.
 
+## Desktop double-clickers
+
+Copy `Watch My Voice.bat` ("Watch My Voice.bat") to your Desktop and double-click
+it: it sits there watching the clipboard, so from then on **copy anything and it
+is read aloud**. Leave the window open (minimise it); close it to stop.
+
+To change how it sounds, open the file in Notepad and edit **one line** near the
+top:
+
+```bat
+set "OPTIONS="                                  :: normal
+set "OPTIONS=--speed 0.9"                       :: slower, clearer
+set "OPTIONS=--temperature 0.85"                :: more expressive
+set "OPTIONS=--temperature 0.6"                 :: steadier
+set "OPTIONS=--lang es"                         :: Spanish
+set "OPTIONS=--speed 0.9 --temperature 0.85"    :: combine freely
+```
+
+Every flag works with `--watch` — they are just more arguments on the same
+command line:
+
+```bat
+python speak.py --watch --speed 0.9 --temperature 0.85 --lang es
+```
+
+Copy the `.bat` to make variants: *My Voice - Slow.bat*, *My Voice - Spanish.bat*,
+each with its own `OPTIONS` line. Re-copying **the same text** speaks it again;
+`--watch` ignores whatever is already on the clipboard when it starts (add
+`--speak-now` if you want that read too).
+
+`Read What I Copied.bat` is the one-shot version: copy, double-click, it reads
+the clipboard once and exits.
+
 ## Options
 
 | Flag | What it does |
 |---|---|
 | `--voice PATH` | folder or `model.pth` (default: `voice.txt`, then `%USERPROFILE%\forge\voices\my-voice`) |
 | `--check` | load the model and report what it found, say nothing |
+| `--watch --speak-now` | also read whatever was already on the clipboard at startup |
 | `--out file.wav` | save the whole thing as one wav instead of playing |
 | `--lang en` | language code (XTTS v2 has 17) |
 | `--speed 1.0` | 0.9 slower, 1.1 brisker |

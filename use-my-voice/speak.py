@@ -672,6 +672,8 @@ def main(argv=None) -> int:
     p.add_argument("--stdin", action="store_true", help="read text from stdin")
     p.add_argument("--watch", action="store_true",
                    help="keep running; speak the clipboard every time it changes")
+    p.add_argument("--speak-now", action="store_true", dest="speak_now",
+                   help="with --watch: also read what is already on the clipboard")
     p.add_argument("--voice", help="folder with model.pth, or the .pth itself")
     p.add_argument("--out", help="save one wav here instead of playing")
     p.add_argument("--lang", default="en", help="language code (default en)")
@@ -716,27 +718,34 @@ def main(argv=None) -> int:
             if not sys.platform.startswith("win"):
                 log("[speak] --watch uses the clipboard; on this OS it may not work")
             log("[speak] watching the clipboard — copy text anywhere to hear it. "
-                "Ctrl+C to stop.")
-            last = clipboard_text().strip()
-            if last:
-                log("[speak] (speaking what is already on the clipboard)")
-            while True:
-                if last:
-                    current = last
-                    chunks = to_chunks(current)
+                "This window can stay minimised; Ctrl+C or close it to stop.")
 
-                    def changed(snapshot=current) -> bool:
+            # What is already on the clipboard when we start is usually old
+            # (and sometimes private), so it is ignored unless asked for.
+            spoken = None
+            current = clipboard_text().strip()
+            if current and args.speak_now:
+                log(f"[speak] speaking the {len(current)} characters already copied")
+            elif current:
+                spoken = current
+                log(f"[speak] ignoring the {len(current)} characters already on the "
+                    "clipboard; copy something new (or pass --speak-now)")
+
+            while True:
+                fresh = clipboard_text().strip()
+                if fresh and fresh != spoken:
+                    spoken = fresh
+
+                    def changed(snapshot=fresh) -> bool:
+                        """A new copy interrupts the one being read."""
                         return clipboard_text().strip() != snapshot
 
+                    chunks = to_chunks(fresh)
+                    log(f"[speak] reading {len(chunks)} chunk(s)")
                     speak_chunks(voice, chunks, player, lang=args.lang,
                                  speed=args.speed, temperature=args.temperature,
                                  should_stop=changed, log=log)
-                    last = clipboard_text().strip()
-                time.sleep(0.3)
-                fresh = clipboard_text().strip()
-                if fresh != last:
-                    last = fresh
-            # unreachable
+                time.sleep(0.25)
 
         text = read_input(args)
         if not text or not text.strip():
