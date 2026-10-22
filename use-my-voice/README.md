@@ -116,33 +116,76 @@ That's why `--watch` exists: it loads once and stays loaded. If you run
 
 ## Desktop double-clickers
 
-Copy `Watch My Voice.bat` ("Watch My Voice.bat") to your Desktop and double-click
-it: it sits there watching the clipboard, so from then on **copy anything and it
-is read aloud**. Leave the window open (minimise it); close it to stop.
+A `.bat` you double-click gets no chance to type flags, so there are four ways
+to get them in. Use whichever fits the moment.
 
-To change how it sounds, open the file in Notepad and edit **one line** near the
-top:
+### 1. `My Voice.bat` — it asks (best default)
 
-```bat
-set "OPTIONS="                                  :: normal
-set "OPTIONS=--speed 0.9"                       :: slower, clearer
-set "OPTIONS=--temperature 0.85"                :: more expressive
-set "OPTIONS=--temperature 0.6"                 :: steadier
-set "OPTIONS=--lang es"                         :: Spanish
-set "OPTIONS=--speed 0.9 --temperature 0.85"    :: combine freely
+Double-click it and a menu appears:
+
+```
+   1   Normal speech
+   2   Slower and clearer        --speed 0.9
+   3   More expressive           --temperature 0.85
+   4   Steadier, predictable     --temperature 0.6
+   5   Another language ...      --lang es
+   6   Custom flags ...          type anything
+
+   N   Start watching the clipboard with the above
+   Q   Quit
 ```
 
-Every flag works with `--watch` — they are just more arguments on the same
-command line:
+Press a number to change the voice, then `N` (or wait 8 seconds and it starts
+with **the settings you used last time** — it remembers them in
+`%LOCALAPPDATA%\MyVoice\settings.txt`). No editing, ever.
 
-```bat
-python speak.py --watch --speed 0.9 --temperature 0.85 --lang es
+### 2. One desktop icon per mood (shortcut arguments)
+
+A Windows shortcut can carry flags, so you get the same result with zero
+keystrokes at launch:
+
+1. Right-click `My Voice.bat` → **Send to → Desktop (create shortcut)**.
+2. Right-click that shortcut → **Properties**.
+3. In *Target*, append the flags **outside** the closing quote:
+
+   ```
+   "C:\Users\l3ung\Desktop\forge\use-my-voice\My Voice.bat" --speed 0.9 --temperature 0.85
+   ```
+4. Rename it *My Voice - Slow*. Repeat for *- Lively*, *- Spanish*.
+
+Double-clicking it skips the menu and runs with those flags.
+
+### 3. Drag a text file onto the icon
+
+`My Voice.bat` reads any `.txt`/`.md` you drop on it (your saved settings still
+apply):
+
+```
+[My Voice - Spanish.bat]  <-  article.txt
 ```
 
-Copy the `.bat` to make variants: *My Voice - Slow.bat*, *My Voice - Spanish.bat*,
-each with its own `OPTIONS` line. Re-copying **the same text** speaks it again;
-`--watch` ignores whatever is already on the clipboard when it starts (add
-`--speak-now` if you want that read too).
+### 4. Edit the one `OPTIONS` line
+
+`Watch My Voice.bat` and `Read What I Copied.bat` are the plain versions: open
+in Notepad, change
+
+```bat
+set "OPTIONS="
+```
+
+to e.g. `set "OPTIONS=--speed 0.9 --lang es"`, save. That's it — the file *is*
+the configuration.
+
+### Flags from a terminal (no menu at all)
+
+```bat
+..\.venv\Scripts\python.exe speak.py --watch --speed 0.9 --temperature 0.85 --lang es
+```
+
+Every flag works with `--watch`; they are just more arguments on one command
+line, in any order. Re-copying **the same text** speaks it again; `--watch`
+ignores whatever is already on the clipboard at startup (add `--speak-now` to
+read that too).
 
 `Read What I Copied.bat` is the one-shot version: copy, double-click, it reads
 the clipboard once and exits.
@@ -154,6 +197,7 @@ the clipboard once and exits.
 | `--voice PATH` | folder or `model.pth` (default: `voice.txt`, then `%USERPROFILE%\forge\voices\my-voice`) |
 | `--check` | load the model and report what it found, say nothing |
 | `--watch --speak-now` | also read whatever was already on the clipboard at startup |
+| `--file notes.txt` | read a file (this is what a dropped file becomes) |
 | `--out file.wav` | save the whole thing as one wav instead of playing |
 | `--lang en` | language code (XTTS v2 has 17) |
 | `--speed 1.0` | 0.9 slower, 1.1 brisker |
