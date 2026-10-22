@@ -21,6 +21,8 @@ REM  8   = default: quick, but you have time to press a key
 REM  20  = plenty of time to think
 REM  0   = never auto-start; wait until you press a key (no countdown)
 set "WAIT=8"
+REM  (leave the line above as a plain number - anything else falls back to 8)
+for /f "delims=0123456789" %%A in ("%WAIT%") do set "WAIT=8"
 REM ---------------------------------------------------------------------
 
 set "SAVED=%LOCALAPPDATA%\MyVoice\settings.txt"
@@ -53,7 +55,50 @@ if exist "%SAVED%" (
     )
 )
 
+REM ==================================================================
+REM  The menu. If WAIT is above zero it counts down visibly: one
+REM  'choice' per second (so a key press is caught immediately) and a
+REM  redraw of the bar so you can see the time left ticking away.
+REM ==================================================================
 :menu
+if "%WAIT%"=="0" goto :menu_untimed
+set "LEFT=%WAIT%"
+
+:countdown
+call :draw
+REM  X is the 9th character, so both a timeout and a literal X give
+REM  ERRORLEVEL 9 - that is the "one second has gone by" tick.
+choice /C 123456NQX /N /T 1 /D X >nul
+set "KEY=%ERRORLEVEL%"
+if "%KEY%"=="9" goto :tick
+goto :handle
+
+:tick
+set /a LEFT-=1
+if %LEFT% LEQ 0 goto :start
+goto :countdown
+
+:menu_untimed
+set "LEFT=0"
+call :draw
+choice /C 123456NQ /N >nul
+set "KEY=%ERRORLEVEL%"
+goto :handle
+
+REM ---- what each key does (1-6 pick a setting, 7 = start, 8 = quit) ----
+:handle
+if "%KEY%"=="1" set "OPTIONS=" & goto :save
+if "%KEY%"=="2" set "OPTIONS=--speed 0.9" & goto :save
+if "%KEY%"=="3" set "OPTIONS=--temperature 0.85" & goto :save
+if "%KEY%"=="4" set "OPTIONS=--temperature 0.6" & goto :save
+if "%KEY%"=="5" goto :language
+if "%KEY%"=="6" goto :custom
+if "%KEY%"=="7" goto :start
+if "%KEY%"=="8" goto :quit
+goto :menu
+
+REM ---- one screen of menu, with the countdown at the bottom ----
+:draw
 cls
 echo.
 echo   ============================================================
@@ -73,23 +118,42 @@ echo.
 echo     N   Start watching the clipboard with the above
 echo     Q   Quit
 echo.
-if "%WAIT%"=="0" (
-    choice /C 123456NQ /N /M "  Press 1-6 to change, N to start, Q to quit: "
-) else (
-    choice /C 123456NQ /N /T %WAIT% /D N /M "  Press 1-6 to change, or wait %WAIT%s to start: "
-)
+call :bar
+exit /b
 
-if errorlevel 8 goto :quit
-if errorlevel 7 goto :start
-if errorlevel 6 goto :custom
-if errorlevel 5 goto :language
-if errorlevel 4 set "OPTIONS=--temperature 0.6" & goto :save
-if errorlevel 3 set "OPTIONS=--temperature 0.85" & goto :save
-if errorlevel 2 set "OPTIONS=--speed 0.9" & goto :save
-if errorlevel 1 set "OPTIONS=" & goto :save
+REM ---- the countdown bar itself ----
+:bar
+if "%WAIT%"=="0" goto :bar_untimed
+REM  FILL = how much of the wait is already used up, so the bar fills up
+REM  as the time runs out.
+set /a FILL=(%WAIT%-%LEFT%)*20/%WAIT% 2>nul
+if %FILL% LSS 0 set "FILL=0"
+if %FILL% GTR 20 set "FILL=20"
+set /a EMPTY=20-FILL
+REM  Two 20-character rulers, sliced by delayed expansion: hashes for the time
+REM  already spent, dashes for the time left. A FOR loop cannot build this -
+REM  %BAR% inside a block expands once, before the loop runs.
+set "RULER=####################"
+set "GAPS=--------------------"
+set "DONE=!RULER:~0,%FILL%!"
+set "LEFTBAR=!GAPS:~0,%EMPTY%!"
+echo     [!DONE!!LEFTBAR!]  %LEFT%s  then it starts on its own
+echo.
+exit /b
+
+:bar_untimed
+echo     No countdown - press a key when you are ready.
+echo.
+exit /b
 
 :save
-> "%SAVED%" echo %OPTIONS%
+REM  Save exactly what was picked. "echo" with nothing after it prints
+REM  "ECHO is on.", so an empty choice deletes the file instead.
+if defined OPTIONS (
+    > "%SAVED%" echo %OPTIONS%
+) else (
+    del "%SAVED%" >nul 2>&1
+)
 goto :menu
 
 :language

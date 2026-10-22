@@ -133,16 +133,34 @@ Double-click it and a menu appears:
 
    N   Start watching the clipboard with the above
    Q   Quit
+
+    [##########----------]  4s  then it starts on its own
 ```
 
-Press a number to change the voice, then `N` (or wait 8 seconds and it starts
-with **the settings you used last time** — it remembers them in
+Press a number to change the voice, then `N` (or let the countdown run out and
+it starts with **the settings you used last time** — it remembers them in
 `%LOCALAPPDATA%\MyVoice\settings.txt`). No editing, ever.
 
 ### 1z. How long the menu waits
 
-`My Voice.bat` auto-starts with your saved settings after 8 seconds. To change
-that, open the file in Notepad and edit **one line** near the top:
+There is a visible countdown under the menu, so you can always see how much time
+you have left:
+
+```
+    [##########----------]  4s  then it starts on its own
+```
+
+The bar fills in from the left while the number counts down, and when it reaches
+zero it starts on its own. Press a key at any moment and it reacts right away —
+you never have to wait for the bar to finish. `WAIT=0` swaps the bar for
+`No countdown - press a key when you are ready.`
+
+It is a real countdown rather than one long sleep: the `.bat` re-asks once per
+second, which is exactly why a key pressed halfway through is caught instantly
+instead of being ignored until the timer ends.
+
+To change the length, open the file in Notepad and edit **one line** near the
+top:
 
 ```bat
 REM  8   = default: quick, but you have time to press a key
@@ -152,9 +170,8 @@ set "WAIT=8"
 ```
 
 `set "WAIT=20"` gives you twenty seconds; `set "WAIT=0"` makes it wait forever
-(no countdown at all). Windows caps the countdown at 9999 seconds, which is
-plenty. The prompt shows the number you chose, e.g.
-`Press 1-6 to change, or wait 20s to start:`.
+(no countdown at all). Windows' `choice` tops out at 9999 seconds, which is
+plenty.
 
 ### 1a. What `settings.txt` should look like
 
@@ -193,6 +210,8 @@ Rules that matter:
   `ignoring stray text argument(s)` when that happens, so it isn't silent.
 - No `--watch` needed in the file (the .bat adds it), and `--voice` is supplied
   by the .bat too — anything you add here wins, because it comes last.
+- Picking `1` (normal speech) in the menu deletes this file, so it can't keep
+  applying an old slowing-down choice.
 
 ### 2. One desktop icon per mood (shortcut arguments)
 
