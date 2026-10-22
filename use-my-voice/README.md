@@ -139,6 +139,23 @@ Press a number to change the voice, then `N` (or wait 8 seconds and it starts
 with **the settings you used last time** — it remembers them in
 `%LOCALAPPDATA%\MyVoice\settings.txt`). No editing, ever.
 
+### 1z. How long the menu waits
+
+`My Voice.bat` auto-starts with your saved settings after 8 seconds. To change
+that, open the file in Notepad and edit **one line** near the top:
+
+```bat
+REM  8   = default: quick, but you have time to press a key
+REM  20  = plenty of time to think
+REM  0   = never auto-start; wait until you press a key (no countdown)
+set "WAIT=8"
+```
+
+`set "WAIT=20"` gives you twenty seconds; `set "WAIT=0"` makes it wait forever
+(no countdown at all). Windows caps the countdown at 9999 seconds, which is
+plenty. The prompt shows the number you chose, e.g.
+`Press 1-6 to change, or wait 20s to start:`.
+
 ### 1a. What `settings.txt` should look like
 
 The menu saves your choice in `%LOCALAPPDATA%\MyVoice\settings.txt`. Open it

@@ -16,6 +16,13 @@ REM ==================================================================
 set "APP=C:\Users\l3ung\Desktop\forge\use-my-voice\speak.py"
 set "PY=C:\Users\l3ung\Desktop\forge\.venv\Scripts\python.exe"
 set "VOICE=%USERPROFILE%\forge\voices\my-voice"
+REM ---- how many seconds the menu waits before starting ------------------
+REM  8   = default: quick, but you have time to press a key
+REM  20  = plenty of time to think
+REM  0   = never auto-start; wait until you press a key (no countdown)
+set "WAIT=8"
+REM ---------------------------------------------------------------------
+
 set "SAVED=%LOCALAPPDATA%\MyVoice\settings.txt"
 if not exist "%LOCALAPPDATA%\MyVoice" mkdir "%LOCALAPPDATA%\MyVoice" >nul 2>&1
 
@@ -66,7 +73,11 @@ echo.
 echo     N   Start watching the clipboard with the above
 echo     Q   Quit
 echo.
-choice /C 123456NQ /N /T 8 /D N /M "  Press 1-6 to change, N to start now: "
+if "%WAIT%"=="0" (
+    choice /C 123456NQ /N /M "  Press 1-6 to change, N to start, Q to quit: "
+) else (
+    choice /C 123456NQ /N /T %WAIT% /D N /M "  Press 1-6 to change, or wait %WAIT%s to start: "
+)
 
 if errorlevel 8 goto :quit
 if errorlevel 7 goto :start
